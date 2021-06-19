@@ -1,3 +1,9 @@
+# macOS aux file
+*.DS_Store
+
+# sounds folder
+sounds
+
 # Prerequisites
 *.d
 
