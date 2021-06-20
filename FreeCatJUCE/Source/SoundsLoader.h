@@ -10,6 +10,7 @@
 
 #pragma once
 #include "../JuceLibraryCode/JuceHeader.h"
+#include "GlobalVars.h"
 
 class SoundsLoader
 {
@@ -21,11 +22,14 @@ public:
     // other necessary data of the sounds
     std::vector<int> ids;
     std::vector<juce::String> paths;
-    std::vector<float> x_points;
-    std::vector<float> y_points;
     std::vector<float> loudness;
+    //std::vector<float> x_points;
+    //std::vector<float> y_points;
+    
 private:
+    juce::SharedResourcePointer<SharedVariable_loaded> loaded;
     // manager object that finds an appropriate way to decode various audio files.  Used with SampleSound objects.
     juce::AudioFormatManager audioFormatManager;
     juce::AudioFormatReader* audioFormatReader { nullptr };
 };
+

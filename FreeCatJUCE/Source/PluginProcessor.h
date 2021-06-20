@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "SoundsLoader.h"
+#include "GlobalVars.h"
 
 //==============================================================================
 /**
@@ -56,13 +57,19 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
-    bool mouseClicked { false };
     
     int UDPport { 9001 };
     void oscMessageReceived (const juce::OSCMessage& message) override;
     void showConnectionErrorMessage (const juce::String& messageText);
 
 private:
+    juce::SharedResourcePointer<SharedVariable_loaded> loaded;
+
+    juce::SharedResourcePointer<SharedVariable_mouseClicked> mouseClicked;
+    juce::SharedResourcePointer<SharedVariable_x> x_points;
+    juce::SharedResourcePointer<SharedVariable_y> y_points;
+    juce::SharedResourcePointer<SharedVariable_closestIndex> closest_sound_index;
+    
     SoundsLoader loader;
     int samplePos { 0 };
     //==============================================================================

@@ -11,6 +11,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "GlobalVars.h"
 
 //==============================================================================
 /*
@@ -28,21 +29,24 @@ public:
     void mouseDrag (const juce::MouseEvent &event) override;
     void mouseUp (const juce::MouseEvent &event) override;
     void mouseDown (const juce::MouseEvent &event) override;
+    float computeDistance(juce::Point<int>, juce::Point<float>);
+    int getClosestSound(juce::Point<int>);
     
     float size { 10 };
     bool isEntered { false };
     juce::Point<int> mousePos { 0, 0 };
-    bool mouseClicked;
-    
-    // this should come from python (OSC)
-    int n_points { 2 };
-    float Xpoints[2] = { 0, size };
-    float Ypoints[2] = { 0, size };
-    
-    
 
 private:
-    // puntero a clase de procesor
+    juce::SharedResourcePointer<SharedVariable_loaded> loaded;
+
+    juce::SharedResourcePointer<SharedVariable_mouseClicked> mouseClicked;
+    juce::SharedResourcePointer<SharedVariable_x> x_points;
+    juce::SharedResourcePointer<SharedVariable_y> y_points;
+    juce::SharedResourcePointer<SharedVariable_closestIndex> closest_sound_index;
+    
+    std::vector<float> Xpoints;
+    std::vector<float> Ypoints;
+
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     //HelloSamplerAudioProcessor& processor;

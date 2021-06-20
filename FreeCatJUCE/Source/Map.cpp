@@ -9,6 +9,7 @@
 */
 
 #include <JuceHeader.h>
+//#include <Math.h>
 #include "Map.h"
 
 //==============================================================================
@@ -32,11 +33,17 @@ void Map::paint (juce::Graphics& g)
     */
     g.fillAll(juce::Colours::black);
     
-    for (int i = 0; i < n_points; i++)
+    if(loaded->getVariable())
     {
-        juce::Rectangle<float> area { Xpoints[i], Ypoints[i], size, size };
-        g.setColour(isEntered ? juce::Colours::red : juce::Colours::lightgoldenrodyellow);
-        g.fillEllipse(area);
+        Xpoints = x_points->getVector(); // ugly but works
+        Ypoints = y_points->getVector();
+        for (int i = 0; i < Xpoints.size(); i++)
+        {
+            juce::Rectangle<float> area { Xpoints[i] * (getWidth()-size), Ypoints[i] * (getHeight()-size), size, size };
+            //juce::Rectangle<float> area { 0.617253f*getWidth(), 0.178460f*getHeight(), size, size };
+            g.setColour(isEntered ? juce::Colours::red : juce::Colours::lightgoldenrodyellow);
+            g.fillEllipse(area);
+        }
     }
 }
 
@@ -58,18 +65,42 @@ void Map::mouseDrag (const juce::MouseEvent & e)
     if (x>=0 && x<=getWidth() && y>=0 && y<=getHeight())
     {
         mousePos = e.getPosition();
-        // actualizar aquí las variables del pluginprocessor
+        closest_sound_index->setVariable(getClosestSound(mousePos));
     }
+}
+
+int Map::getClosestSound(juce::Point<int> click)
+{
+    // Returns the index of the closest sound (euclidean distance)
+    float shortest_distance = -1;
+    float shortest_distance_index = -1;
+    for (int i = 0; i < Xpoints.size(); i++)
+    {
+        juce::Point<float> point { Xpoints[i]*(getWidth()-size),Ypoints[i]*(getHeight()-size)};
+        int distance = computeDistance(click, point);
+        if ( (shortest_distance < 0) || (distance < shortest_distance) )
+        {
+            shortest_distance = distance;
+            shortest_distance_index = i;
+        }
+    }
+    return shortest_distance_index;
+}
+
+float Map::computeDistance(juce::Point<int> p1, juce::Point<float> p2)
+{
+    // euclidean distance between ttwo points
+    return sqrt( pow(p1.getX()-p2.getX(),2)+pow(p1.getY()-p2.getY(),2) );
 }
 
 void Map::mouseDown (const juce::MouseEvent & e)
 {
-    mouseClicked = true;
+    mouseClicked->setVariable(true);
 }
 
 void Map::mouseUp (const juce::MouseEvent & e)
 {
-    mouseClicked = false;
+    mouseClicked->setVariable(false);
 }
 
 

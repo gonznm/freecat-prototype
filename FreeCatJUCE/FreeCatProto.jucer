@@ -7,6 +7,7 @@
     <GROUP id="{FC95570A-5FEE-807B-2615-28D598BC25C8}" name="Source">
       <FILE id="sSLXdK" name="SoundsLoader.cpp" compile="1" resource="0"
             file="Source/SoundsLoader.cpp"/>
+      <FILE id="Zv36BG" name="GlobalVars.h" compile="0" resource="0" file="Source/GlobalVars.h"/>
       <FILE id="yYhaV1" name="SoundsLoader.h" compile="0" resource="0" file="Source/SoundsLoader.h"/>
       <FILE id="eYAkhM" name="Map.cpp" compile="1" resource="0" file="Source/Map.cpp"/>
       <FILE id="Rusu26" name="Map.h" compile="0" resource="0" file="Source/Map.h"/>

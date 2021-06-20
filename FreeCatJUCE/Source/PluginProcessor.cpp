@@ -151,11 +151,14 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
     
     
-    if(mouseClicked)
+    if(mouseClicked->getVariable() && loaded->getVariable())
     {
-        // function to get closest sound
-        auto* data = loader.sounds[2]->getAudioData();
+        auto* data = loader.sounds[closest_sound_index->getVariable()]->getAudioData();
+        //auto* data = loader.sounds[2]->getAudioData();
         // function to get segment
+        std::cout << "Input channels: " << data->getNumChannels() << "\n";
+        std::cout << "Output channels: " << buffer.getNumChannels() << "\n";
+        
         const float* const inL = data->getReadPointer (0);
         const float* const inR = data->getNumChannels() > 1 ? data->getReadPointer (1) : nullptr;
         
@@ -167,14 +170,23 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // Fill the buffer
         while(--numSamples>=0)
         {
-            if (outR != nullptr)
+            if (outR != nullptr && inR != nullptr)
             {
                 *outL++ += inL[samplePos];
                 *outR++ += inR[samplePos];
             }
-            else
+            else if (outR != nullptr && inR == nullptr)
+            {
+                *outL++ += inL[samplePos];
+                *outR++ += inL[samplePos];
+            }
+            else if (outR == nullptr && inR != nullptr)
             {
                 *outL++ += (inL[samplePos] + inR[samplePos]) * 0.5f;
+            }
+            else if (outR != nullptr && inR != nullptr)
+            {
+                *outL++ += inL[samplePos] * 0.5f;
             }
             
             if (samplePos < data->getNumSamples())
@@ -183,6 +195,8 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
             else
             {
+                // !! don't forget to comment this to avoid loops!
+                samplePos = 0;
                 break;
             }
         }
@@ -228,33 +242,42 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 // 1234, "/path/audio", 1.5, 1.2, 45.5
 void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& message)
 {
+    // clear all vectors
+    loader.ids.clear();
+    loader.paths.clear();
+    x_points->clear();
+    y_points->clear();
+    loader.loudness.clear();
+    
     std::cout << "Size: "+std::to_string(message.size())+"\n";
     int i=0;
     while (i<message.size())
     {
-        std::cout << "\nSound number "+std::to_string(loader.ids.size()+1)+"\n";
         int ID = message[i].getInt32();
-        std::cout << "ID: "+std::to_string(ID)+"\n";
         loader.ids.push_back(ID);
         i++;
         juce::String path = message[i].getString();
-        std::cout << "Path: "+path+"\n";
         loader.paths.push_back(path);
         i++;
         float x = message[i].getFloat32();
-        std::cout << "Coordinate X: "+std::to_string(x)+"\n";
-        loader.x_points.push_back(x);
+        x_points->append(x);
         i++;
         float y = message[i].getFloat32();
-        std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
-        loader.y_points.push_back(y);
+        y_points->append(y);
         i++;
         float l = message[i].getFloat32();
-        std::cout << "Loudness: "+std::to_string(l)+"\n";
         loader.loudness.push_back(l);
         i++;
+        
+        // Print info in console
+        std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
+        std::cout << "ID: "+std::to_string(ID)+"\n";
+        std::cout << "Path: "+path+"\n";
+        std::cout << "Coordinate X: "+std::to_string(x)+"\n";
+        std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
+        std::cout << "Loudness: "+std::to_string(l)+"\n";
     }
-    std::cout << "\nTotal number of sounds: "+std::to_string(loader.ids.size())+"\n\n";
+    std::cout << "\nTotal number of sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
 
     loader.load();
 }

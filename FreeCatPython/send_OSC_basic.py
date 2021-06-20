@@ -11,14 +11,14 @@ PORT = 9001
 # Example –> [1234, "/path/audio", 1.5, 1.2, 45.5]
 arguments = []
 random.seed(10)
-for path in os.listdir("/Volumes/Almacen/DirectCode/sounds"):
+for path in os.listdir("/Volumes/Almacen/DirectCode/freecat-prototype/sounds"):
     if path.endswith(".ogg"):
         # Sound ID
         _, file = os.path.split(path)
         id = int(file.split("_")[0])
         arguments.append(id)
         # Path
-        arguments.append('/Volumes/Almacen/DirectCode/sounds/'+path)
+        arguments.append('/Volumes/Almacen/DirectCode/freecat-prototype/sounds/'+path)
 
         # Fake coordinates
         x = random.uniform(0, 1)

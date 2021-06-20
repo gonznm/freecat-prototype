@@ -42,7 +42,6 @@ void HelloSamplerAudioProcessorEditor::timerCallback()
 {
     map.repaint();
     repaint();
-    audioProcessor.mouseClicked = map.mouseClicked;
 }
 
 void HelloSamplerAudioProcessorEditor::resized()
