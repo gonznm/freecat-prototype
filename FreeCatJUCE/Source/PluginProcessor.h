@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 #include "SoundsLoader.h"
-#include "GlobalVars.h"
+#include "SharedVars.h"
 
 //==============================================================================
 /**
@@ -61,8 +61,12 @@ public:
     int UDPport { 9001 };
     void oscMessageReceived (const juce::OSCMessage& message) override;
     void showConnectionErrorMessage (const juce::String& messageText);
+    std::vector<int> string2intVector(juce::String str);
+    std::vector<float> string2floatVector(juce::String str);
+    int getGrainStartSample(int snd_idx);
 
 private:
+    juce::SharedResourcePointer<SharedVariable_grainSize> grainSize;
     juce::SharedResourcePointer<SharedVariable_loaded> loaded;
 
     juce::SharedResourcePointer<SharedVariable_mouseClicked> mouseClicked;

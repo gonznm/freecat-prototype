@@ -11,7 +11,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "GlobalVars.h"
+#include "SharedVars.h"
 
 //==============================================================================
 /*

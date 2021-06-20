@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    GlobalVars.h
+    SharedVars.h
     Created: 19 Jun 2021 11:18:12pm
     Author:  Gonzalo Nieto Montero
 
@@ -9,7 +9,21 @@
 */
 
 #pragma once
-
+class SharedVariable_grainSize : public juce::ChangeBroadcaster
+{
+public:
+    int grainSize { 4410 };
+    
+    void setVariable(int newValue)
+    {
+        grainSize = newValue;
+        sendChangeMessage();
+    }
+    bool getVariable()
+    {
+        return grainSize;
+    }
+};
 
 class SharedVariable_loaded : public juce::ChangeBroadcaster
 {

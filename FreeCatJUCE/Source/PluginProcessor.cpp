@@ -154,10 +154,8 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if(mouseClicked->getVariable() && loaded->getVariable())
     {
         auto* data = loader.sounds[closest_sound_index->getVariable()]->getAudioData();
-        //auto* data = loader.sounds[2]->getAudioData();
-        // function to get segment
-        std::cout << "Input channels: " << data->getNumChannels() << "\n";
-        std::cout << "Output channels: " << buffer.getNumChannels() << "\n";
+        int startSample = this->getGrainStartSample(closest_sound_index->getVariable());
+        std::cout << "Chosen start sample: " << startSample << "\n";
         
         const float* const inL = data->getReadPointer (0);
         const float* const inR = data->getNumChannels() > 1 ? data->getReadPointer (1) : nullptr;
@@ -170,6 +168,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         // Fill the buffer
         while(--numSamples>=0)
         {
+            // Cover all stereo channel numbers combinations i:2->o:2, i:1->o:2, etc
             if (outR != nullptr && inR != nullptr)
             {
                 *outL++ += inL[samplePos];
@@ -189,14 +188,14 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 *outL++ += inL[samplePos] * 0.5f;
             }
             
-            if (samplePos < data->getNumSamples())
+            if (samplePos < data->getNumSamples() && samplePos < startSample + grainSize->getVariable())
             {
                 samplePos += 1;
             }
             else
             {
-                // !! don't forget to comment this to avoid loops!
-                samplePos = 0;
+                // loop the sound
+                samplePos = startSample;
                 break;
             }
         }
@@ -238,18 +237,23 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 //==============================================================================
 // My added functions
 
-// OSC receiver: get ids, paths, x, y, loudness
-// 1234, "/path/audio", 1.5, 1.2, 45.5
+// OSC receiver: ids, paths, x, y, targetLoudness, startSamples, loudnessValues
+// Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0 4410 8820", "48.0 54.2 44.1"]
 void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& message)
 {
+    std::cout << "Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
+    std::cout << "(there should be 7 * number_of_sounds)\n";
+    
     // clear all vectors
     loader.ids.clear();
     loader.paths.clear();
     x_points->clear();
     y_points->clear();
-    loader.loudness.clear();
+    loader.targetLoudness.clear();
+    loader.startSamples.clear();
+    loader.loudnessValues.clear();
     
-    std::cout << "Size: "+std::to_string(message.size())+"\n";
+    // decode message based on the order of the arguments
     int i=0;
     while (i<message.size())
     {
@@ -266,7 +270,15 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
         y_points->append(y);
         i++;
         float l = message[i].getFloat32();
-        loader.loudness.push_back(l);
+        loader.targetLoudness.push_back(l);
+        i++;
+        // grains start samples come as a string of integers separated by spaces, this needs to be splitted
+        juce::String startSamples_str = message[i].getString();
+        loader.startSamples.push_back(this->string2intVector(startSamples_str));
+        i++;
+        // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
+        juce::String loudnessValues_str = message[i].getString();
+        loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
         i++;
         
         // Print info in console
@@ -276,10 +288,63 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
         std::cout << "Coordinate X: "+std::to_string(x)+"\n";
         std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
         std::cout << "Loudness: "+std::to_string(l)+"\n";
+        std::cout << "Grains start samples: "+startSamples_str+"\n";
+        std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
     }
-    std::cout << "\nTotal number of sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
+    std::cout << "\nTotal number of received sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
 
     loader.load();
+}
+
+int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
+{
+    int startSample = 0;
+    // get loudness indexes that are inside a certain margin (+-6 dB) around the target loudness
+    std::vector<float> candidates;
+    for(int i=0; i<loader.loudnessValues[snd_idx].size(); i++)
+    {
+        if ( loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-6 && loader.loudnessValues[snd_idx][i] < loader.targetLoudness[snd_idx]+6 )
+        {
+            // use these indexes to get the start samples of these grains
+            candidates.push_back(loader.startSamples[snd_idx][i]);
+        }
+        // if there are no values, just take one that is >(targetLoudness-12)
+        else if (loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-12)
+        {
+            candidates.push_back(loader.startSamples[snd_idx][i]);
+        }
+    }
+    // make a random choice between these ones
+    int random_idx = rand() % candidates.size() + 0;
+    startSample  = candidates[random_idx];
+
+    return startSample;
+}
+
+
+
+std::vector<int> HelloSamplerAudioProcessor::string2intVector(juce::String str)
+{
+    juce::StringArray str_split;
+    str_split.addTokens(str, " ", "\"");
+    std::vector<int> output;
+    for (int i=0; i<str_split.size(); i++)
+    {
+        output.push_back(str_split[i].getIntValue());
+    }
+    return output;
+}
+
+std::vector<float> HelloSamplerAudioProcessor::string2floatVector(juce::String str)
+{
+    juce::StringArray str_split;
+    str_split.addTokens(str, " ", "\"");
+    std::vector<float> output;
+    for (int i=0; i<str_split.size(); i++)
+    {
+        output.push_back(str_split[i].getFloatValue());
+    }
+    return output;
 }
 
 void HelloSamplerAudioProcessor::showConnectionErrorMessage (const juce::String& messageText)
