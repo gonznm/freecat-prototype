@@ -19,14 +19,19 @@ HelloSamplerAudioProcessor::HelloSamplerAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
 #endif
+window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::hann) // hamming window used to window grain in the time domain
 {
     // Start listening to OSC messages
     // specify here on which UDP port number to receive incoming OSC messages
     if (! connect (UDPport))
         this->showConnectionErrorMessage ("Error: could not connect to UDP port " + std::to_string(UDPport));
     OSCReceiver::addListener (this, "/juce");
+    // Listen to closest_sound_index variable changes (a callback function is )
+    closest_sound_index->addChangeListener(this);
+    // Initialize buffer where grains are stored
+    grainBuffer.setSize(1, grainSize->getVariable());
 }
 
 HelloSamplerAudioProcessor::~HelloSamplerAudioProcessor()
@@ -150,53 +155,54 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-    
     if(mouseClicked->getVariable() && loaded->getVariable())
     {
-        auto* data = loader.sounds[closest_sound_index->getVariable()]->getAudioData();
-        int startSample = this->getGrainStartSample(closest_sound_index->getVariable());
-        std::cout << "Chosen start sample: " << startSample << "\n";
-        
-        const float* const inL = data->getReadPointer (0);
-        const float* const inR = data->getNumChannels() > 1 ? data->getReadPointer (1) : nullptr;
-        
-        float* outL = buffer.getWritePointer (0, 0);
-        float* outR = buffer.getNumChannels() > 1 ? buffer.getWritePointer (1, 0) : nullptr;
-        
-        int numSamples = buffer.getNumSamples();
-        
-        // Fill the buffer
-        while(--numSamples>=0)
+        // Fill grain buffer (only at the very first block this should be done at the beginning)
+        if (firstCycle)
         {
-            // Cover all stereo channel numbers combinations i:2->o:2, i:1->o:2, etc
-            if (outR != nullptr && inR != nullptr)
+            this->calculateGrain();
+            firstCycle=false;
+        }
+        // Write grain to the output buffer
+        const float* grainReader = grainBuffer.getReadPointer(0); // grainBuffer gets updated calling calculateGrain()
+        // Fill one channel buffer, which will be copied to the others (mono)
+        float* writePointer = buffer.getWritePointer(0);
+        for (int sampleCount=0; sampleCount<buffer.getNumSamples(); sampleCount++)
+        {
+            writePointer[sampleCount] = grainReader[grainSamplePos];
+            
+            if (sampleCount==0)
             {
-                *outL++ += inL[samplePos];
-                *outR++ += inR[samplePos];
+                std::cout << "Starting buffer... (buffer position " << sampleCount << ", value " << writePointer[sampleCount] << ", grain position " << grainSamplePos << ")\n";
             }
-            else if (outR != nullptr && inR == nullptr)
+            if (grainSamplePos==0)
             {
-                *outL++ += inL[samplePos];
-                *outR++ += inL[samplePos];
+                std::cout << "\nGrain first sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
+                std::cout << "Output (first): " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
             }
-            else if (outR == nullptr && inR != nullptr)
+            if (grainSamplePos==grainBuffer.getNumSamples())
             {
-                *outL++ += (inL[samplePos] + inR[samplePos]) * 0.5f;
-            }
-            else if (outR != nullptr && inR != nullptr)
-            {
-                *outL++ += inL[samplePos] * 0.5f;
+                std::cout << "Grain last sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
+                std::cout << "Output (last): " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
             }
             
-            if (samplePos < data->getNumSamples() && samplePos < startSample + grainSize->getVariable())
+            if (grainSamplePos < grainBuffer.getNumSamples())
             {
-                samplePos += 1;
+                grainSamplePos += 1;
             }
             else
             {
-                // loop the sound
-                samplePos = startSample;
-                break;
+                // choose a new grain because one has just finished
+                grainSamplePos = 0;
+                this->calculateGrain();
+            }
+        }
+        // Copy this written buffer to the other channels (mono)
+        if (buffer.getNumChannels() > 1)
+        {
+            for (int channel=1; channel <buffer.getNumChannels(); channel++)
+            {
+                buffer.copyFrom(channel, 0, buffer, 0, 0, buffer.getNumSamples());
             }
         }
     }
@@ -296,6 +302,44 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
     loader.load();
 }
 
+void HelloSamplerAudioProcessor::changeListenerCallback(juce::ChangeBroadcaster *source)
+{
+    // Callback that gets triggered when the mouse moves to a new sound (the closest_sound_index changes)
+    std::cout << "\nSound index has changed ("<< closest_sound_index->getVariable() <<")\n\n";
+    // This may be glitchy and not necessary
+    //this->calculateGrain();
+}
+
+void HelloSamplerAudioProcessor::calculateGrain()
+{
+    int startSample = this->getGrainStartSample(closest_sound_index->getVariable());
+    // get audio data from the closest sound to click
+    auto* data = loader.sounds[closest_sound_index->getVariable()]->getAudioData();
+    const float* const inL = data->getReadPointer (0);
+    const float* const inR = data->getNumChannels() > 1 ? data->getReadPointer (1) : nullptr;
+    
+    // clean the buffer where the grain is going to be loaded
+    grainBuffer.clear();
+    float* grainWriter = grainBuffer.getWritePointer (0, 0); // why doesn't this work? -> float* in = 0;
+    //std::cout << "Chosen start sample: " << startSample << "(sound index:" << closest_sound_index->getVariable() << ")\n";
+    // Fill auxiliary buffer with the data of the grain
+    for (int sampleCount=0; sampleCount<grainBuffer.getNumSamples(); sampleCount++)
+    {
+        if (inR != nullptr)
+        {
+            grainWriter[sampleCount] = (inL[startSample+sampleCount] + inR[startSample+sampleCount]) * 0.5f;
+        }
+        else
+        {
+            grainWriter[sampleCount] = inL[startSample+sampleCount];
+        }
+    }
+    // Window grain with a hamming window
+    std::cout << "First grain sample pre-windowing: " << grainWriter[0] << "\n";
+    window.multiplyWithWindowingTable (grainWriter, grainSize->getVariable());
+    std::cout << "First grain sample post-windowing: " << grainWriter[0] << "\n";
+}
+
 int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
 {
     int startSample = 0;
@@ -321,8 +365,8 @@ int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
     return startSample;
 }
 
-
-
+//=============================================================================
+// Util functions
 std::vector<int> HelloSamplerAudioProcessor::string2intVector(juce::String str)
 {
     juce::StringArray str_split;

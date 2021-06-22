@@ -65,7 +65,12 @@ void Map::mouseDrag (const juce::MouseEvent & e)
     if (x>=0 && x<=getWidth() && y>=0 && y<=getHeight())
     {
         mousePos = e.getPosition();
-        closest_sound_index->setVariable(getClosestSound(mousePos));
+        if (loaded->getVariable())
+        {
+            int candidate = getClosestSound(mousePos);
+            if (closest_sound_index->getVariable()!=candidate)
+                closest_sound_index->setVariable(candidate);
+        }
     }
 }
 

@@ -16,7 +16,8 @@
 /**
 */
 class HelloSamplerAudioProcessor  : public juce::AudioProcessor,
-                                    private juce::OSCReceiver, private juce::OSCReceiver::ListenerWithOSCAddress<juce::OSCReceiver::MessageLoopCallback>
+                                    private juce::OSCReceiver, private juce::OSCReceiver::ListenerWithOSCAddress<juce::OSCReceiver::MessageLoopCallback>,
+                                    public juce::ChangeListener
 {
 public:
     //==============================================================================
@@ -59,11 +60,17 @@ public:
     //==============================================================================
     
     int UDPport { 9001 };
+    bool firstCycle { false };
+    
     void oscMessageReceived (const juce::OSCMessage& message) override;
     void showConnectionErrorMessage (const juce::String& messageText);
+    
     std::vector<int> string2intVector(juce::String str);
     std::vector<float> string2floatVector(juce::String str);
+    
     int getGrainStartSample(int snd_idx);
+    void changeListenerCallback(juce::ChangeBroadcaster *source) override;
+    void calculateGrain();
 
 private:
     juce::SharedResourcePointer<SharedVariable_grainSize> grainSize;
@@ -75,7 +82,9 @@ private:
     juce::SharedResourcePointer<SharedVariable_closestIndex> closest_sound_index;
     
     SoundsLoader loader;
-    int samplePos { 0 };
+    int grainSamplePos { 0 };
+    juce::dsp::WindowingFunction<float> window;
+    juce::AudioBuffer<float> grainBuffer;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HelloSamplerAudioProcessor)
 };

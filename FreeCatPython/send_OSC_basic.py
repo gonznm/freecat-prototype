@@ -42,7 +42,7 @@ for path in os.listdir("/Volumes/Almacen/DirectCode/freecat-prototype/sounds"):
         arguments.append(str(loudnessValues).replace('[','').replace(']',''))
 
 print("Number of arguments: ", len(arguments) )
-print("\n",arguments)
+#print("\n",arguments)
 # Send OSC message to JUCE
 client = SimpleUDPClient(IP, PORT)
 client.send_message('/juce', arguments)

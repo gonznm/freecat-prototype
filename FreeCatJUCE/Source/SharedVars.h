@@ -19,7 +19,7 @@ public:
         grainSize = newValue;
         sendChangeMessage();
     }
-    bool getVariable()
+    int getVariable()
     {
         return grainSize;
     }
@@ -49,7 +49,8 @@ public:
     void setVariable(bool newValue)
     {
         mouseClicked = newValue;
-        sendChangeMessage();
+        if (newValue)
+            sendChangeMessage();
     }
     bool getVariable()
     {
@@ -100,7 +101,7 @@ public:
 class SharedVariable_closestIndex : public juce::ChangeBroadcaster
 {
 public:
-    int closest_sound_index;
+    int closest_sound_index { -1 }; // initialize with an index that cannot occur
     
     void setVariable(int newValue)
     {
