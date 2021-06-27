@@ -171,6 +171,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             writePointer[sampleCount] = grainReader[grainSamplePos];
             
+            /* "Debugging"
             if (sampleCount==0)
             {
                 std::cout << "Starting buffer... (buffer position " << sampleCount << ", value " << writePointer[sampleCount] << ", grain position " << grainSamplePos << ")\n";
@@ -185,6 +186,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 std::cout << "Grain last sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
                 std::cout << "Output (last): " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
             }
+            */
             
             if (grainSamplePos < grainBuffer.getNumSamples())
             {
@@ -251,13 +253,13 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
     std::cout << "(there should be 7 * number_of_sounds)\n";
     
     // clear all vectors
-    loader.ids.clear();
-    loader.paths.clear();
-    x_points->clear();
-    y_points->clear();
-    loader.targetLoudness.clear();
-    loader.startSamples.clear();
-    loader.loudnessValues.clear();
+    //loader.ids.clear();
+    //loader.paths.clear();
+    //x_points->clear();
+    //y_points->clear();
+    //loader.targetLoudness.clear();
+    //loader.startSamples.clear();
+    //loader.loudnessValues.clear();
     
     // decode message based on the order of the arguments
     int i=0;
@@ -335,9 +337,9 @@ void HelloSamplerAudioProcessor::calculateGrain()
         }
     }
     // Window grain with a hamming window
-    std::cout << "First grain sample pre-windowing: " << grainWriter[0] << "\n";
+    //std::cout << "First grain sample pre-windowing: " << grainWriter[0] << "\n";
     window.multiplyWithWindowingTable (grainWriter, grainSize->getVariable());
-    std::cout << "First grain sample post-windowing: " << grainWriter[0] << "\n";
+    //std::cout << "First grain sample post-windowing: " << grainWriter[0] << "\n";
 }
 
 int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)

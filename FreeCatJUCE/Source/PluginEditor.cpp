@@ -35,7 +35,7 @@ void HelloSamplerAudioProcessorEditor::paint (juce::Graphics& g)
     // You can add your drawing code here!
     g.setColour (juce::Colours::black);
     g.setFont (15.0f);
-    g.drawSingleLineText ("Mouse: " +std::to_string(map.mousePos.getX())+", "+ std::to_string(map.mousePos.getY()), 5, getHeight()-5, juce::Justification::left);
+    //g.drawSingleLineText ("Mouse: " +std::to_string(map.mousePos.getX())+", "+ std::to_string(map.mousePos.getY()), 5, getHeight()-5, juce::Justification::left);
 }
 
 void HelloSamplerAudioProcessorEditor::timerCallback()

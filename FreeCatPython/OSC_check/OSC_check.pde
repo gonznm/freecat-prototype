@@ -37,15 +37,15 @@ void draw() {
   text("x=" + mouseX + ", y=" + mouseY, 10, 80);
 }
 
-void sendOsc() {
-  OscMessage msg = new OscMessage("/wek/inputs");
-  msg.add((float)mouseX); 
-  msg.add((float)mouseY);
-  oscP5.send(msg, dest);
-}
+//void sendOsc() {
+//  OscMessage msg = new OscMessage("/wek/inputs");
+//  msg.add((float)mouseX); 
+//  msg.add((float)mouseY);
+//  oscP5.send(msg, dest);
+//}
 
 //This is called automatically when OSC message is received
 void oscEvent(OscMessage theOscMessage) {
  println("received message");
- println(theOscMessage.get(0));
+ //println(theOscMessage.get(0));
 }
