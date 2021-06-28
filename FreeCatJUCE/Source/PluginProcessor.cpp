@@ -249,59 +249,67 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 // Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0 4410 8820", "48.0 54.2 44.1"]
 void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& message)
 {
-    std::cout << "Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
-    std::cout << "(there should be 7 * number_of_sounds)\n";
-    
-    // clear all vectors
-    //loader.ids.clear();
-    //loader.paths.clear();
-    //x_points->clear();
-    //y_points->clear();
-    //loader.targetLoudness.clear();
-    //loader.startSamples.clear();
-    //loader.loudnessValues.clear();
-    
-    // decode message based on the order of the arguments
-    int i=0;
-    while (i<message.size())
+    // clear all vectors when the message has finished
+    if (message.size()==1)
     {
-        int ID = message[i].getInt32();
-        loader.ids.push_back(ID);
-        i++;
-        juce::String path = message[i].getString();
-        loader.paths.push_back(path);
-        i++;
-        float x = message[i].getFloat32();
-        x_points->append(x);
-        i++;
-        float y = message[i].getFloat32();
-        y_points->append(y);
-        i++;
-        float l = message[i].getFloat32();
-        loader.targetLoudness.push_back(l);
-        i++;
-        // grains start samples come as a string of integers separated by spaces, this needs to be splitted
-        juce::String startSamples_str = message[i].getString();
-        loader.startSamples.push_back(this->string2intVector(startSamples_str));
-        i++;
-        // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
-        juce::String loudnessValues_str = message[i].getString();
-        loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
-        i++;
-        
-        // Print info in console
-        std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
-        std::cout << "ID: "+std::to_string(ID)+"\n";
-        std::cout << "Path: "+path+"\n";
-        std::cout << "Coordinate X: "+std::to_string(x)+"\n";
-        std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
-        std::cout << "Loudness: "+std::to_string(l)+"\n";
-        std::cout << "Grains start samples: "+startSamples_str+"\n";
-        std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
+        if (message[0].getString().compare("Start")==0)
+        {
+            std::cout << "Start message received: "+message[0].getString()+"\n";
+            loader.ids.clear();
+            loader.paths.clear();
+            x_points->clear();
+            y_points->clear();
+            loader.targetLoudness.clear();
+            loader.startSamples.clear();
+            loader.loudnessValues.clear();
+        }
     }
-    std::cout << "\nTotal number of received sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
+    else
+    {
+        std::cout << "Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
+        std::cout << "(there should be 7 * number_of_sounds in total)\n";
+        // decode message based on the order of the arguments
+        int i=0;
+        while (i<message.size())
+        {
+            int ID = message[i].getInt32();
+            loader.ids.push_back(ID);
+            i++;
+            juce::String path = message[i].getString();
+            loader.paths.push_back(path);
+            i++;
+            float x = message[i].getFloat32();
+            x_points->append(x);
+            i++;
+            float y = message[i].getFloat32();
+            y_points->append(y);
+            i++;
+            float l = message[i].getFloat32();
+            loader.targetLoudness.push_back(l);
+            i++;
+            // grains start samples come as a string of integers separated by spaces, this needs to be splitted
+            juce::String startSamples_str = message[i].getString();
+            loader.startSamples.push_back(this->string2intVector(startSamples_str));
+            i++;
+            // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
+            juce::String loudnessValues_str = message[i].getString();
+            loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
+            i++;
+            
+            // Print info in console
+            std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
+            std::cout << "ID: "+std::to_string(ID)+"\n";
+            std::cout << "Path: "+path+"\n";
+            std::cout << "Coordinate X: "+std::to_string(x)+"\n";
+            std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
+            std::cout << "Loudness: "+std::to_string(l)+"\n";
+            std::cout << "Grains start samples: "+startSamples_str+"\n";
+            std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
+        }
 
-    loader.load();
+        loader.load();
+        std::cout << "\nNumber of received sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
+    }
 }
 
 void HelloSamplerAudioProcessor::changeListenerCallback(juce::ChangeBroadcaster *source)

@@ -15,7 +15,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (800, 600);
+    setSize (900, 900);
     
     addAndMakeVisible(map);
     juce::Timer::startTimerHz(60);
@@ -48,5 +48,5 @@ void HelloSamplerAudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
-    map.setBounds(getWidth()/2 -200, getHeight()/2 -200, 400, 400);
+    map.setBounds(getWidth()/2 -450, getHeight()/2 -450, 900, 900);
 }

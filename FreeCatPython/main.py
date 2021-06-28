@@ -2,12 +2,14 @@ import configs
 import corpus_creation
 import feature_extraction
 from pythonosc.udp_client import SimpleUDPClient
+import sys
 
 # Aux boolean
-content_based_search = False
+content_based_search = True
 
 # approach 1 config
 query='kid'
+
 # approach 2 config
 sound_top_left = '357589' # Trumpet - Asharp3
 sound_top_right = '328727' #  flute_note_tremolo
@@ -52,11 +54,11 @@ def text_query(query):
 def create_arguments_list(df):
     # Create list of arguments to be sent: ids, paths, x, y, targetLoudness, startSamples, loudnessValues
     # Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0, 4410, 8820", "48.0,54.2,44.1"]
-    arguments_part1 = []
-    arguments_part2 = []
-    arguments = arguments_part1
+    arguments_final_list = []  # list of lists
+    arguments_aux = []
     for idx, row in df.iterrows():
         # Sound ID
+        arguments = []
         arguments.append(row['sound_id'])
         # Path - harcoded to be comatible with docker
         path_docker = row['path']
@@ -84,11 +86,22 @@ def create_arguments_list(df):
         loudnessValues_formatted = str(row['grains_loudness']).replace('[','').replace(']','').replace(',','')
         arguments.append(loudnessValues_formatted)
 
-        # Divide arguments in two parts, otherwise it is too big
-        if idx > (len(df.index)/2)-1:
-            arguments = arguments_part2
+        # Divide arguments in parts, otherwise it is too big for UDP
+        if sys.getsizeof(arguments_aux) + sys.getsizeof(arguments) > 300: # 300??
+            arguments_final_list.append(arguments_aux)
+            arguments_aux = []
 
-    return arguments_part1,arguments_part2
+        arguments_aux += arguments
+
+        if idx == df.shape[0]-1:
+            arguments_final_list.append(arguments_aux)
+
+        # If it was not split into parts
+        if idx == df.shape[0]-1 and not arguments_final_list:
+            arguments_final_list = arguments
+            print("List len:",len(arguments_final_list))
+
+    return arguments_final_list
 
 # Create the corpus - 25 sounds
 if content_based_search:
@@ -102,11 +115,24 @@ if content_based_search:
     df['grid'] = grid
 
 # Send OSC message to JUCE
-arguments_part1, arguments_part2 = create_arguments_list(df)
-print("Number of arguments (part 1 and 2): ", len(arguments_part1), len(arguments_part2))
-#print("\nPart 1:",arguments_part1)
-#print("\nPart 2:",arguments_part2)
 client = SimpleUDPClient(IP, PORT)
-#client.send_message('/juce', arguments_part1)
-#client.send_message('/juce', arguments_part2)
+client.send_message('/juce', "Start")
+arguments = create_arguments_list(df)
+# Send the message in parts
+total_num_arg = 0
+if type(arguments[0]) != int:
+    for list in arguments:
+        #print("\nPart:\n",list)
+        client.send_message('/juce', list)
+        total_num_arg += len(list)
+
+    print("Total number of arguments: ", total_num_arg)
+    print("Total number of messages sent: ", len(arguments))
+else:
+    #print("n\Whole message:\n",arguments)
+    client.send_message('/juce', arguments)
+    print("Size in bytes:",sys.getsizeof(arguments))
+    print("Number of arguments:",len(arguments))
+
+print("\nReady!")  
 client.send_message('/juce', "hello")
