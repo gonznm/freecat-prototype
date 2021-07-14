@@ -1,0 +1,18 @@
+python-osc
+numpy==1.15.4
+pyzmq
+scipy
+pandas
+matplotlib
+statsmodels
+scikit-learn
+seaborn
+nltk
+gensim
+sympy
+bokeh
+mido
+networkx
+requests
+beautifulsoup4
+-e git+https://github.com/MTG/freesound-python.git#egg=freesound-python

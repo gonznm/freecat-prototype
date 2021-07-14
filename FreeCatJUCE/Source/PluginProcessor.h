@@ -83,6 +83,7 @@ private:
     
     SoundsLoader loader;
     int grainSamplePos { 0 };
+    int receivedOSCmessages { 0 };
     juce::dsp::WindowingFunction<float> window;
     juce::AudioBuffer<float> grainBuffer;
     //==============================================================================

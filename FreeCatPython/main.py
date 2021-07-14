@@ -2,10 +2,13 @@ import configs
 import corpus_creation
 import feature_extraction
 from pythonosc.udp_client import SimpleUDPClient
+from pythonosc import osc_server
+from pythonosc import dispatcher
 import sys
+import gc
 
 # Aux boolean
-content_based_search = True
+content_based_search = False
 
 # approach 1 config
 query='kid'
@@ -19,9 +22,13 @@ nx = 5
 ny = 5 # total number of sounds (including reference sounds): nx*ny
 
 # OSC config
-IP="127.0.0.1"
+IP_r = "0.0.0.0"
+#IP_s= "127.0.0.1"
+IP_s= "host.docker.internal"
+#IP="172.17.0.2"
 #IP = "192.168.1.52"
-PORT = 9001
+PORT_s = 9001 # port for sending
+PORT_r = 9002 # port for receiving
 
 def interpolation_and_content_based_search(sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right):
     ref_ids_list = [sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right]
@@ -50,6 +57,24 @@ def text_query(query):
         print('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
         corpus_creation.retrieve_sound_preview(sound, configs.FILES_DIR)
     return sounds
+
+def actualsize(input_obj):
+    """ Function by Naser Tamimi to calculate actual size of python objects.
+    This is needed here because the size of a list (sys.getsizeof()) is not the size of the elements it contains.
+    https://towardsdatascience.com/the-strange-size-of-python-objects-in-memory-ce87bdfbb97f
+    """
+    memory_size = 0
+    ids = set()
+    objects = [input_obj]
+    while objects:
+        new = []
+        for obj in objects:
+            if id(obj) not in ids:
+                ids.add(id(obj))
+                memory_size += sys.getsizeof(obj)
+                new.append(obj)
+        objects = gc.get_referents(*new)
+    return memory_size
 
 def create_arguments_list(df):
     # Create list of arguments to be sent: ids, paths, x, y, targetLoudness, startSamples, loudnessValues
@@ -86,8 +111,13 @@ def create_arguments_list(df):
         loudnessValues_formatted = str(row['grains_loudness']).replace('[','').replace(']','').replace(',','')
         arguments.append(loudnessValues_formatted)
 
-        # Divide arguments in parts, otherwise it is too big for UDP
-        if sys.getsizeof(arguments_aux) + sys.getsizeof(arguments) > 300: # 300??
+        # Divide arguments in parts, otherwise the message is too big for UDP
+        #print(f"Size of the current auxiliary list: {actualsize(arguments_aux)} bytes. Trying to add {actualsize(arguments)} bytes...")
+        if actualsize(arguments_aux) + actualsize(arguments) > 2048: 
+            """Output of command "sysctl -n net.inet.udp.maxdgram": 9216 bytes
+            I don't understand why this number of bytes doesn't work, but 2048 works.
+            """
+            #print(f"Auxiliary list ({actualsize(arguments_aux)} bytes) added to final list of arguments. New auxiliary list starts now.")
             arguments_final_list.append(arguments_aux)
             arguments_aux = []
 
@@ -103,6 +133,22 @@ def create_arguments_list(df):
 
     return arguments_final_list
 
+def handle_juce(*args):
+    print(args)
+    sys.stdout.flush()
+    client.send_message('/juce', "Start")
+
+client = SimpleUDPClient(IP_s, PORT_s)
+# Listen to OSC messages
+# import sys, socket
+# dispatcher = dispatcher.Dispatcher()
+# dispatcher.map("/juce", handle_juce)
+# server = osc_server.ThreadingOSCUDPServer((IP_r, PORT_r), dispatcher)
+# print(socket.gethostbyname(socket.gethostname()))
+# print("Serving on {0}".format(server.server_address))
+# sys.stdout.flush()
+# server.serve_forever()
+
 # Create the corpus - 25 sounds
 if content_based_search:
     sounds, grid = interpolation_and_content_based_search(sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right)
@@ -115,24 +161,27 @@ if content_based_search:
     df['grid'] = grid
 
 # Send OSC message to JUCE
-client = SimpleUDPClient(IP, PORT)
+print("\nSending OSC messages...")
+client = SimpleUDPClient(IP_s, PORT_s)
 client.send_message('/juce', "Start")
 arguments = create_arguments_list(df)
 # Send the message in parts
 total_num_arg = 0
+msg_sizes = []
 if type(arguments[0]) != int:
     for list in arguments:
         #print("\nPart:\n",list)
         client.send_message('/juce', list)
         total_num_arg += len(list)
+        msg_sizes.append(actualsize(list))
 
     print("Total number of arguments: ", total_num_arg)
-    print("Total number of messages sent: ", len(arguments))
+    print(f"Total number of messages sent: {len(arguments)} (with sizes: {msg_sizes})")
 else:
     #print("n\Whole message:\n",arguments)
     client.send_message('/juce', arguments)
     print("Size in bytes:",sys.getsizeof(arguments))
     print("Number of arguments:",len(arguments))
 
-print("\nReady!")  
-client.send_message('/juce', "hello")
+client.send_message('/juce', "Finished")
+print("\nReady!")

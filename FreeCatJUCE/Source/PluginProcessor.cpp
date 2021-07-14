@@ -254,7 +254,9 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
     {
         if (message[0].getString().compare("Start")==0)
         {
-            std::cout << "Start message received: "+message[0].getString()+"\n";
+            std::cout << "\nStart message received: "+message[0].getString()+"\n";
+            
+            receivedOSCmessages = 0;
             loader.ids.clear();
             loader.paths.clear();
             x_points->clear();
@@ -262,12 +264,20 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             loader.targetLoudness.clear();
             loader.startSamples.clear();
             loader.loudnessValues.clear();
+            std::cout << "All vectors used to store temporary info of sounds cleared.";
+        }
+        if (message[0].getString().compare("Finished")==0)
+        {
+            std::cout << "\nFinished message received: "+message[0].getString()+"\n";
+            std::cout << "Number of messages received: "+ std::to_string(receivedOSCmessages) +"\n";
+            std::cout << "Number of sounds received: "+std::to_string(x_points->getVector().size())+"\n\n";
+            loader.load();
         }
     }
     else
     {
-        std::cout << "Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
-        std::cout << "(there should be 7 * number_of_sounds in total)\n";
+        std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
+        receivedOSCmessages +=1;
         // decode message based on the order of the arguments
         int i=0;
         while (i<message.size())
@@ -306,16 +316,14 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             std::cout << "Grains start samples: "+startSamples_str+"\n";
             std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
         }
-
-        loader.load();
-        std::cout << "\nNumber of received sounds: "+std::to_string(x_points->getVector().size())+"\n\n";
     }
 }
 
 void HelloSamplerAudioProcessor::changeListenerCallback(juce::ChangeBroadcaster *source)
 {
     // Callback that gets triggered when the mouse moves to a new sound (the closest_sound_index changes)
-    std::cout << "\nSound index has changed ("<< closest_sound_index->getVariable() <<")\n\n";
+    // For "debugging":
+    //std::cout << "\nSound index has changed ("<< closest_sound_index->getVariable() <<")\n\n";
     // This may be glitchy and not necessary
     //this->calculateGrain();
 }
