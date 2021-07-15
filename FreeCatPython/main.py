@@ -7,11 +7,11 @@ from pythonosc import dispatcher
 import sys
 import gc
 
-# Aux boolean
-content_based_search = False
+# Aux boolean that selects interface
+query_by_examples = False
 
 # approach 1 config
-query='kid'
+#query='kid'
 
 # approach 2 config
 sound_top_left = '357589' # Trumpet - Asharp3
@@ -23,12 +23,9 @@ ny = 5 # total number of sounds (including reference sounds): nx*ny
 
 # OSC config
 IP_r = "0.0.0.0"
-#IP_s= "127.0.0.1"
-IP_s= "host.docker.internal"
-#IP="172.17.0.2"
-#IP = "192.168.1.52"
-PORT_s = 9001 # port for sending
 PORT_r = 9002 # port for receiving
+IP_s= "host.docker.internal"
+PORT_s = 9001 # port for sending
 
 def interpolation_and_content_based_search(sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right):
     ref_ids_list = [sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right]
@@ -44,7 +41,7 @@ def interpolation_and_content_based_search(sound_top_left, sound_top_right, soun
 
     # Download the ogg previews
     for count, sound in enumerate(sounds):
-        print('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
+        print_mod('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
         corpus_creation.retrieve_sound_preview(sound, configs.FILES_DIR)
 
     return sounds, grid
@@ -54,7 +51,7 @@ def text_query(query):
     sounds = corpus_creation.query_freesound(query, num_results=25)
     # Download the ogg previews
     for count, sound in enumerate(sounds):
-        print('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
+        print_mod('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
         corpus_creation.retrieve_sound_preview(sound, configs.FILES_DIR)
     return sounds
 
@@ -91,7 +88,7 @@ def create_arguments_list(df):
         arguments.append(path)
 
         # Sound coordinates
-        if content_based_search:
+        if query_by_examples:
             x = row['grid'][0]
             y = row['grid'][1]
         else:
@@ -133,55 +130,62 @@ def create_arguments_list(df):
 
     return arguments_final_list
 
-def handle_juce(*args):
-    print(args)
+def print_mod(string):
+    # To print while the server is waiting
+    print(str(string))
     sys.stdout.flush()
+
+def download_and_analyze(query):
+    # Create the corpus - 25 sounds
+    print_mod("\nQuerying sounds...")
+    if query_by_examples:
+        sounds, grid = interpolation_and_content_based_search(sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right)
+    else:
+        sounds = text_query(query)
+
+    # Feature extraction
+    print_mod("\nExtracting features...")
+    df = feature_extraction.get_audios_and_analysis(sounds, configs.grain_size)
+    if query_by_examples:
+        df['grid'] = grid
+    print_mod("\nFeatures extracted.")
+
+    # Send OSC message to JUCE
+    print_mod("\nSending OSC messages...")
+    client = SimpleUDPClient(IP_s, PORT_s)
     client.send_message('/juce', "Start")
+    arguments = create_arguments_list(df)
+    # Send the message in parts
+    total_num_arg = 0
+    msg_sizes = []
+    if type(arguments[0]) != int:
+        for list in arguments:
+            #print_mod("\nPart:\n",list)
+            client.send_message('/juce', list)
+            total_num_arg += len(list)
+            msg_sizes.append(actualsize(list))
 
-client = SimpleUDPClient(IP_s, PORT_s)
+        print_mod(f"Total number of arguments: {total_num_arg}")
+        print_mod(f"Total number of messages sent: {len(arguments)}")
+        print_mod(f"Sizes of the messages (in chronological order): {msg_sizes} bytes.")
+    else:
+        #print_mod("n\Whole message:\n",arguments)
+        client.send_message('/juce', arguments)
+        print_mod("Size in bytes:",sys.getsizeof(arguments))
+        print_mod("Number of arguments:",len(arguments))
+
+    client.send_message('/juce', "Finished")
+    print_mod("\nReady!")
+
+def handle_juce(*args):
+    print_mod("\nReceived OSC message: " + str(args))
+    # Trigger process
+    download_and_analyze(args[1])
+
 # Listen to OSC messages
-# import sys, socket
-# dispatcher = dispatcher.Dispatcher()
-# dispatcher.map("/juce", handle_juce)
-# server = osc_server.ThreadingOSCUDPServer((IP_r, PORT_r), dispatcher)
-# print(socket.gethostbyname(socket.gethostname()))
-# print("Serving on {0}".format(server.server_address))
-# sys.stdout.flush()
-# server.serve_forever()
-
-# Create the corpus - 25 sounds
-if content_based_search:
-    sounds, grid = interpolation_and_content_based_search(sound_top_left, sound_top_right, sound_bottom_left, sound_bottom_right)
-else:
-    sounds = text_query(query)
-
-# Feature extraction
-df = feature_extraction.get_audios_and_analysis(sounds, configs.grain_size)
-if content_based_search:
-    df['grid'] = grid
-
-# Send OSC message to JUCE
-print("\nSending OSC messages...")
-client = SimpleUDPClient(IP_s, PORT_s)
-client.send_message('/juce', "Start")
-arguments = create_arguments_list(df)
-# Send the message in parts
-total_num_arg = 0
-msg_sizes = []
-if type(arguments[0]) != int:
-    for list in arguments:
-        #print("\nPart:\n",list)
-        client.send_message('/juce', list)
-        total_num_arg += len(list)
-        msg_sizes.append(actualsize(list))
-
-    print("Total number of arguments: ", total_num_arg)
-    print(f"Total number of messages sent: {len(arguments)} (with sizes: {msg_sizes})")
-else:
-    #print("n\Whole message:\n",arguments)
-    client.send_message('/juce', arguments)
-    print("Size in bytes:",sys.getsizeof(arguments))
-    print("Number of arguments:",len(arguments))
-
-client.send_message('/juce', "Finished")
-print("\nReady!")
+dispatcher = dispatcher.Dispatcher()
+dispatcher.map("/juce", handle_juce)
+server = osc_server.ThreadingOSCUDPServer((IP_r, PORT_r), dispatcher)
+print("Serving on {0}".format(server.server_address))
+sys.stdout.flush()
+server.serve_forever()

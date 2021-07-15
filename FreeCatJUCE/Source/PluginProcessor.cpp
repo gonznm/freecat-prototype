@@ -25,8 +25,8 @@ window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::hann) // 
 {
     // Start listening to OSC messages
     // specify here on which UDP port number to receive incoming OSC messages
-    if (! connect (UDPport))
-        this->showConnectionErrorMessage ("Error: could not connect to UDP port " + std::to_string(UDPport));
+    if (! connect (receiveUDPport))
+        this->showConnectionErrorMessage ("Error: could not connect to UDP port " + std::to_string(receiveUDPport));
     OSCReceiver::addListener (this, "/juce");
     // Listen to closest_sound_index variable changes (a callback function is )
     closest_sound_index->addChangeListener(this);

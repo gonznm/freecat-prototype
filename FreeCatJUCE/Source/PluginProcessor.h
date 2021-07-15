@@ -59,7 +59,7 @@ public:
     
     //==============================================================================
     
-    int UDPport { 9001 };
+    int receiveUDPport { 9001 };
     bool firstCycle { false };
     
     void oscMessageReceived (const juce::OSCMessage& message) override;
