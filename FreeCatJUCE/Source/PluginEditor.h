@@ -29,14 +29,29 @@ public:
     void showConnectionErrorMessage(const juce::String& messageText);
 
 private:
+    // Title interface one (text)
     juce::Label titleLabel;
-    juce::Label inputLabel;
-    juce::TextEditor inputText;
+    // Title interface two ()
+    juce::Label titleLabelTwo;
+    // Sound map
     Map map;
+    //Text query text boxes
+    juce::Label queryLabel;
+    juce::TextEditor queryText;
+    // Query by examples text boxes
+    juce::Label queryByExample_1;
+    juce::TextEditor queryByExampleID_1;
+    juce::Label queryByExample_2;
+    juce::TextEditor queryByExampleID_2;
+    juce::Label queryByExample_3;
+    juce::TextEditor queryByExampleID_3;
+    juce::Label queryByExample_4;
+    juce::TextEditor queryByExampleID_4;
     
     juce::OSCSender sender;
     int sendUDPport { 9002 };
-    void sendOSC(juce::String query);
+    void sendOSCtext(juce::String query);
+    void sendOSCexamples(juce::String one, juce::String two, juce::String three, juce::String four);
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

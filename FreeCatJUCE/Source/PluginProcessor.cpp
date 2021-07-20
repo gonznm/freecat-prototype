@@ -245,7 +245,7 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 //==============================================================================
 // My added functions
 
-// OSC receiver: ids, paths, x, y, targetLoudness, startSamples, loudnessValues
+// OSC receiver: ids, paths, x, y, targetLoudness, loudnessValues
 // Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0 4410 8820", "48.0 54.2 44.1"]
 void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& message)
 {
@@ -262,9 +262,8 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             x_points->clear();
             y_points->clear();
             loader.targetLoudness.clear();
-            loader.startSamples.clear();
             loader.loudnessValues.clear();
-            std::cout << "All vectors used to store temporary info of sounds cleared.";
+            std::cout << "All vectors used to store temporary information of sounds cleared.";
         }
         if (message[0].getString().compare("Finished")==0)
         {
@@ -297,10 +296,6 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             float l = message[i].getFloat32();
             loader.targetLoudness.push_back(l);
             i++;
-            // grains start samples come as a string of integers separated by spaces, this needs to be splitted
-            juce::String startSamples_str = message[i].getString();
-            loader.startSamples.push_back(this->string2intVector(startSamples_str));
-            i++;
             // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
             juce::String loudnessValues_str = message[i].getString();
             loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
@@ -312,8 +307,7 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             std::cout << "Path: "+path+"\n";
             std::cout << "Coordinate X: "+std::to_string(x)+"\n";
             std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
-            std::cout << "Loudness: "+std::to_string(l)+"\n";
-            std::cout << "Grains start samples: "+startSamples_str+"\n";
+            std::cout << "Average loudness: "+std::to_string(l)+"\n";
             std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
         }
     }
@@ -367,13 +361,13 @@ int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
     {
         if ( loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-6 && loader.loudnessValues[snd_idx][i] < loader.targetLoudness[snd_idx]+6 )
         {
-            // use these indexes to get the start samples of these grains
-            candidates.push_back(loader.startSamples[snd_idx][i]);
+            // Use these indexes to get the start samples of these grains
+            candidates.push_back(i * grainSize->grainSize);
         }
         // if there are no values, just take one that is >(targetLoudness-12)
         else if (loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-12)
         {
-            candidates.push_back(loader.startSamples[snd_idx][i]);
+            candidates.push_back(i * grainSize->grainSize);
         }
     }
     // make a random choice between these ones
@@ -385,17 +379,6 @@ int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
 
 //=============================================================================
 // Util functions
-std::vector<int> HelloSamplerAudioProcessor::string2intVector(juce::String str)
-{
-    juce::StringArray str_split;
-    str_split.addTokens(str, " ", "\"");
-    std::vector<int> output;
-    for (int i=0; i<str_split.size(); i++)
-    {
-        output.push_back(str_split[i].getIntValue());
-    }
-    return output;
-}
 
 std::vector<float> HelloSamplerAudioProcessor::string2floatVector(juce::String str)
 {

@@ -23,7 +23,6 @@ public:
     std::vector<int> ids;
     std::vector<juce::String> paths;
     std::vector<float> targetLoudness;
-    std::vector<std::vector<int>> startSamples;
     std::vector<std::vector<float>> loudnessValues;
     
 private:
