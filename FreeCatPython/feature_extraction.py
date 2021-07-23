@@ -26,7 +26,7 @@ def analyze_segments(audio, grain_size):
 
         # Extract loudness
         loudness = ess.Loudness()(grain)/grain_size
-        loudness_dB = 10*np.log10(loudness)
+        loudness_dB = np.around(10*np.log10(loudness), decimals=1)
 
         # Add analysis results to output lists
         startSamples.append(start)

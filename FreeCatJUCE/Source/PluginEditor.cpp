@@ -26,6 +26,23 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     // Time to repaint map
     juce::Timer::startTimerHz(60);
     
+    // Grain size
+    addAndMakeVisible (grainSizeLabel);
+    grainSizeLabel.setText ("Grain size:", juce::dontSendNotification);
+    grainSizeLabel.attachToComponent (&grainSizeText, true);
+    grainSizeLabel.setColour (juce::Label::textColourId, juce::Colours::black);
+    grainSizeLabel.setJustificationType (juce::Justification::right);
+    addAndMakeVisible (grainSizeText);
+    grainSizeText.setColour (juce::Label::backgroundColourId, juce::Colours::darkblue);
+    grainSizeText.setInputRestrictions(6, "0123456789");
+    grainSizeText.onReturnKey = [this] {
+        // Send OSC messages
+        grainSize->setVariable(grainSizeText.getText().getIntValue());
+        std::cout << "Grain size to be sent via OSC: " << grainSize->getVariable() << "\n";
+        if (! sender.send("/juce/grain", grainSize->getVariable()))
+            this->showConnectionErrorMessage("Error: could not send OSC message.");
+    };
+    
     // Title interface one
     addAndMakeVisible (titleLabel);
     titleLabel.setFont (juce::Font (16.0f, juce::Font::bold));
@@ -44,7 +61,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     queryText.onReturnKey = [this] {
         std::cout << "Text query to be sent via OSC: " << queryText.getText() + "\n";
         this->sendOSCtext(queryText.getText());
-        //queryLabel.hideEditor(true);
+        this->startLoading();
     };
     
     // Title interface two
@@ -90,9 +107,10 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     queryByExampleID_4.setColour (juce::Label::backgroundColourId, juce::Colours::darkblue);
     queryByExampleID_4.setInputRestrictions(6, "0123456789");
     queryByExampleID_4.onReturnKey = [this] {
+        // Send OSC messages
         std::cout << "List of sound IDs to be sent via OSC: " << queryByExampleID_1.getText()+", "+ queryByExampleID_2.getText()+", "+ queryByExampleID_3.getText()+", "+ queryByExampleID_4.getText() + "\n";
         this->sendOSCexamples(queryByExampleID_1.getText(), queryByExampleID_2.getText(), queryByExampleID_3.getText(), queryByExampleID_4.getText());
-        //queryLabel.hideEditor(true);
+        this->startLoading();
     };
 }
 
@@ -107,10 +125,12 @@ void HelloSamplerAudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (juce::Colours::white);
 
-    // You can add your drawing code here!
-    //g.setColour (juce::Colours::black);
-    //g.setFont (15.0f);
-    //g.drawSingleLineText ("Mouse: " +std::to_string(map.mousePos.getX())+", "+ std::to_string(map.mousePos.getY()), 5, getHeight()-5, juce::Justification::left);
+    if (loading->getVariable())
+    {
+        g.setColour (juce::Colours::black);
+        g.setFont (40.0f);
+        g.drawSingleLineText ("Loading, please wait...", 80, getHeight()-60);
+    }
 }
 
 void HelloSamplerAudioProcessorEditor::timerCallback()
@@ -126,8 +146,9 @@ void HelloSamplerAudioProcessorEditor::resized()
     int mapWidth = 600;
     int mapHeight = 600;
     map.setBounds(getWidth()/2, getHeight()/2 - mapHeight/2, mapWidth, mapHeight);
-    titleLabel.setBounds(160,  50, getWidth() - 20,  30);
-    queryText.setBounds(100, 100, mapWidth-160, 20);
+    grainSizeText.setBounds(100, 60, mapWidth-150, 20);
+    titleLabel.setBounds(160,  150, getWidth() - 20,  30);
+    queryText.setBounds(100, 200, mapWidth-160, 20);
     titleLabelTwo.setBounds(160,  getHeight()/2 - 50, getWidth() - 20,  30);
     queryByExampleID_1.setBounds(200, getHeight()/2, mapWidth-300, 20);
     queryByExampleID_2.setBounds(200, getHeight()/2+21, mapWidth-300, 20);
@@ -147,6 +168,28 @@ void HelloSamplerAudioProcessorEditor::sendOSCexamples(juce::String one, juce::S
     // create and send an OSC message with an address and a float value:
     if (! sender.send("/juce/examples", one, two, three, four))
         this->showConnectionErrorMessage("Error: could not send OSC message.");
+}
+
+void HelloSamplerAudioProcessorEditor::startLoading()
+{
+    // Blocks text editors and show loading message
+    queryText.setReadOnly(true);
+    queryByExampleID_1.setReadOnly(true);
+    queryByExampleID_2.setReadOnly(true);
+    queryByExampleID_3.setReadOnly(true);
+    queryByExampleID_4.setReadOnly(true);
+    loading->setVariable(true);
+}
+
+void HelloSamplerAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source)
+{
+    // Callback that gets triggered when the loading boolean turns to false
+    std::cout << "Loading boolean has changed to false: " << loading->getVariable() << "\n";
+    queryText.setReadOnly(false);
+    queryByExampleID_1.setReadOnly(false);
+    queryByExampleID_2.setReadOnly(false);
+    queryByExampleID_3.setReadOnly(false);
+    queryByExampleID_4.setReadOnly(false);
 }
 
 void HelloSamplerAudioProcessorEditor::showConnectionErrorMessage(const juce::String& messageText)

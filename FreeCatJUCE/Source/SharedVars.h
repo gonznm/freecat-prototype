@@ -70,7 +70,6 @@ public:
     void append(float newValue)
     {
         x_points.push_back(newValue);
-        sendChangeMessage();
     }
     std::vector<float> getVector()
     {
@@ -90,7 +89,6 @@ public:
     void append(float newValue)
     {
         y_points.push_back(newValue);
-        sendChangeMessage();
     }
     std::vector<float> getVector()
     {
@@ -113,4 +111,22 @@ public:
         return closest_sound_index;
     }
 };
+
+class SharedVariable_loading : public juce::ChangeBroadcaster
+{
+public:
+    bool loading { false };
+    
+    void setVariable(bool newValue)
+    {
+        loading = newValue;
+        if (!newValue)
+            sendChangeMessage();
+    }
+    int getVariable()
+    {
+        return loading;
+    }
+};
+
 

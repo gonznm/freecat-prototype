@@ -6,6 +6,7 @@ from pythonosc import osc_server
 from pythonosc import dispatcher
 import sys
 import gc
+import math
 
 ## Example of text query
 # query='kid'
@@ -21,6 +22,11 @@ IP_r = "0.0.0.0"
 PORT_r = 9002 # port for receiving
 IP_s= "host.docker.internal"
 PORT_s = 9001 # port for sending
+MAX_BYTES_SIZE = 1024
+"""Output of command "sysctl -n net.inet.udp.maxdgram": 9216 bytes
+    I don't understand why this number of bytes doesn't work, but 2048 works... - it depends on the network I'm connected to, tho
+    There is a limit on Juce's side, it can be 512 sometimes
+"""
 
 # Total number of sounds (including reference sounds): nx*ny
 nx = 5 
@@ -73,18 +79,17 @@ def actualsize(input_obj):
     return memory_size
 
 def create_arguments_list(df, query_by_examples):
-    # Create list of arguments to be sent: ids, paths, x, y, targetLoudness, startSamples, loudnessValues
-    # Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0, 4410, 8820", "48.0,54.2,44.1"]
-    arguments_final_list = []  # list of lists
-    arguments_aux = []
+    # Create list of arguments to be sent: ids, paths, x, y, targetLoudness, loudnessValues
+    # Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "48.0874 54.2234 44.1123"]
+    msgs = []  # list of arguments
     for idx, row in df.iterrows():
-        # Sound ID
         arguments = []
-        arguments.append(row['sound_id'])
-        # Path - harcoded to be comatible with docker
+
+        # Sound ID
+        id = row['sound_id']
+        # Path - harcoded to be compatible with docker
         path_docker = row['path']
         path = '/Volumes/Almacen/DirectCode/freecat-prototype/FreeCatPython'+path_docker[4:]
-        arguments.append(path)
 
         # Sound coordinates
         if query_by_examples:
@@ -93,58 +98,58 @@ def create_arguments_list(df, query_by_examples):
         else:
             x = row['pca_norm_range'][0]
             y = row['pca_norm_range'][1]
-        arguments.append(x)
-        arguments.append(y)
 
         # Target loudness
-        arguments.append(row['average_loudness'])
-
-        # Grains start samples
-        # startSamples_formatted = str(row['grains_start_samples']).replace('[','').replace(']','').replace(',','')
-        # arguments.append(startSamples_formatted)
+        ldns = row['average_loudness']
 
         # Loudness of each grain
-        loudnessValues_formatted = str(row['grains_loudness']).replace('[','').replace(']','').replace(',','')
-        arguments.append(loudnessValues_formatted)
-
-        # Divide arguments in parts, otherwise the message is too big for UDP
-        # Take only part of the sound if the retrieved sound is too long and therefore its size is too big
-        # size_single_sound = actualsize(arguments)
-        # size_small_args = actualsize(arguments[:4])
-        # if size_single_sound> 1024:
-        #     print_mod(f"Bytes of the small part: {size_small_args}")
-        #     num = size_single_sound/(1024-180- size_small_args)
-        #     max_len = int(len(arguments[5])/num)
-        #     max_len_ = int(len(arguments[6])/num)
-        #     arguments[5] = arguments[5][:max_len]
-        #     arguments[6] = arguments[6][:max_len_]
-        #     arguments[5] = arguments[5][:arguments[5].rfind(' ')]
-        #     arguments[6] = arguments[6][:arguments[6].rfind(' ')]
-        #     print_mod(f"Too big sound first: {size_single_sound} bytes. After modification: {actualsize(arguments)} bytes.")
-
+        loudnessValues = row['grains_loudness']
+        loudnessValues_formatted = str(loudnessValues).replace('[','').replace(']','').replace(',','')
         
-        print(f"Size of the current auxiliary list: {actualsize(arguments_aux)} bytes. One sound arguments size: {actualsize(arguments)} bytes.")
-        if actualsize(arguments_aux) + actualsize(arguments) > 2048: 
-            """Output of command "sysctl -n net.inet.udp.maxdgram": 9216 bytes
-            I don't understand why this number of bytes doesn't work, but 2048 works... - it depends on the network I'm connected to, tho?
-            I think there is a limit on Juce's side
-            """
-            #print(f"Auxiliary list ({actualsize(arguments_aux)} bytes) added to final list of arguments. New auxiliary list starts now.")
-            arguments_final_list.append(arguments_aux)
-            arguments_aux = []
+        # Before adding arguments to the messages list, check its size in bytes, as it may have to be splitted
+        size_small_args = actualsize([id, path, x, y, ldns])
+        size_long_string = actualsize([loudnessValues_formatted])
+        print_mod(f"Sending sound {id} {{{idx+1}/{df.shape[0]}}}")
+        #print_mod(f"Size of the small part of the message: {size_small_args}. Size of the loudnessValues_formatted string: {size_long_string}")
+        if size_long_string + size_small_args > MAX_BYTES_SIZE:
+            # Divide long string of loudness values in parts, otherwise the message is too big for JUCE
+            n_parts = size_long_string/(MAX_BYTES_SIZE-size_small_args-28)
+            len_part = int(len(loudnessValues)/n_parts)
+            print_mod(f"Dividing information in several messages. Number of parts: {n_parts} (rounded to {math.ceil(n_parts)}). Length of each part: {len_part} (total length: {len(loudnessValues)}).")
+            arguments.append("New sound")
+            for i in range(math.ceil(n_parts)):
+                # Append same sound ID and rest of arguments
+                arguments.append(id)
+                arguments.append(path)
+                arguments.append(x)
+                arguments.append(y)
+                arguments.append(ldns)
+                # Take only a part of the list
+                if (i+1)*len_part < len(loudnessValues):
+                    l = loudnessValues[i*len_part : (i+1)*len_part]
+                else:
+                    l = loudnessValues[i*len_part:]
+                l_formatted = str(l).replace('[','').replace(']','').replace(',','')
+                # Append this part and add it to the messages list (one message per sound) 
+                arguments.append(l_formatted)
+                msgs.append(arguments)
+                #print_mod(f"Size of the divided string: {actualsize(l_formatted)} bytes (vs. {size_long_string} bytes of the complete string). String itself: {l_formatted}.")
+                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Initial arguments: {arguments[:4]}.")
+                arguments = []
 
-        arguments_aux += arguments
-
-        # Last argument if the list
-        if idx == df.shape[0]-1:
-            arguments_final_list.append(arguments_aux)
-
-        # If the information doesn't need to be splitted into parts
-        if idx == df.shape[0]-1 and not arguments_final_list:
-            arguments_final_list = arguments
-            print("List len:",len(arguments_final_list))
-
-    return arguments_final_list
+        else:
+            arguments.append("New sound")
+            arguments.append(row['sound_id'])
+            arguments.append(path)
+            arguments.append(x)
+            arguments.append(y)
+            arguments.append(ldns)
+            arguments.append(loudnessValues_formatted)
+            # One message per sound   
+            msgs.append(arguments)
+            print_mod(f"Sound packed to be sent. Initial arguments: {arguments[:4]}")
+        
+    return msgs
 
 def print_mod(string):
     # To print while the server is waiting
@@ -170,25 +175,25 @@ def download_and_analyze(query, ref_ids_list, query_by_examples):
     print_mod("\nSending OSC messages...")
     client = SimpleUDPClient(IP_s, PORT_s)
     client.send_message('/juce', "Start")
-    arguments = create_arguments_list(df, query_by_examples)
+    msgs = create_arguments_list(df, query_by_examples)
     # Send the message in parts
     total_num_arg = 0
     msg_sizes = []
-    if type(arguments[0]) != int:
-        for list in arguments:
+    if type(msgs[0]) != int:
+        for arguments in msgs:
             #print_mod("\nPart:\n",list)
-            client.send_message('/juce', list)
-            total_num_arg += len(list)
-            msg_sizes.append(actualsize(list))
+            client.send_message('/juce', arguments)
+            total_num_arg += len(arguments)
+            msg_sizes.append(actualsize(arguments))
 
         print_mod(f"Total number of arguments: {total_num_arg}")
-        print_mod(f"Total number of messages sent: {len(arguments)}")
+        print_mod(f"Total number of messages sent: {len(msgs)}")
         print_mod(f"Sizes of the messages (in chronological order): {msg_sizes} bytes.")
     else:
         #print_mod("n\Whole message:\n",arguments)
-        client.send_message('/juce', arguments)
-        print_mod("Size in bytes:",sys.getsizeof(arguments))
-        print_mod("Number of arguments:",len(arguments))
+        client.send_message('/juce', msgs)
+        print_mod("Size in bytes:", actualsize(msgs))
+        print_mod("Number of arguments:",len(msgs))
 
     client.send_message('/juce', "Finished")
     print_mod("\nReady!")
@@ -205,8 +210,15 @@ def handle_query_by_examples(*args):
     # Trigger process
     download_and_analyze(None, ref_ids_list, True)
 
+def handle_grain_size(*args):
+    print_mod("\nGrain size received: " + str(args))
+    # Trigger process
+    configs.grain_size = args[1]
+    print_mod(f"Grain size changed to: {configs.grain_size}")
+
 # Listen to OSC messages
 dispatcher = dispatcher.Dispatcher()
+dispatcher.map("/juce/grain", handle_grain_size)
 dispatcher.map("/juce/text", handle_text_query)
 dispatcher.map("/juce/examples", handle_query_by_examples)
 server = osc_server.ThreadingOSCUDPServer((IP_r, PORT_r), dispatcher)

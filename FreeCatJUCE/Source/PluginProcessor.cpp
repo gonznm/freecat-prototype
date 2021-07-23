@@ -271,44 +271,64 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             std::cout << "Number of messages received: "+ std::to_string(receivedOSCmessages) +"\n";
             std::cout << "Number of sounds received: "+std::to_string(x_points->getVector().size())+"\n\n";
             loader.load();
+            loading->setVariable(false);
         }
     }
     else
     {
         std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
         receivedOSCmessages +=1;
-        // decode message based on the order of the arguments
-        int i=0;
+        // Decode message based on the order of the arguments
+        int i=1;
         while (i<message.size())
         {
-            int ID = message[i].getInt32();
-            loader.ids.push_back(ID);
-            i++;
-            juce::String path = message[i].getString();
-            loader.paths.push_back(path);
-            i++;
-            float x = message[i].getFloat32();
-            x_points->append(x);
-            i++;
-            float y = message[i].getFloat32();
-            y_points->append(y);
-            i++;
-            float l = message[i].getFloat32();
-            loader.targetLoudness.push_back(l);
-            i++;
-            // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
-            juce::String loudnessValues_str = message[i].getString();
-            loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
-            i++;
-            
-            // Print info in console
-            std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
-            std::cout << "ID: "+std::to_string(ID)+"\n";
-            std::cout << "Path: "+path+"\n";
-            std::cout << "Coordinate X: "+std::to_string(x)+"\n";
-            std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
-            std::cout << "Average loudness: "+std::to_string(l)+"\n";
-            std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
+            if ( message[0].getString().compare("New sound")==0 )
+            {
+                int ID = message[i].getInt32();
+                loader.ids.push_back(ID);
+                i++;
+                juce::String path = message[i].getString();
+                loader.paths.push_back(path);
+                i++;
+                float x = message[i].getFloat32();
+                x_points->append(x);
+                i++;
+                float y = message[i].getFloat32();
+                y_points->append(y);
+                i++;
+                float l = message[i].getFloat32();
+                loader.targetLoudness.push_back(l);
+                i++;
+                // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
+                juce::String loudnessValues_str = message[i].getString();
+                loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
+                i++;
+                // Print info in console
+                std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
+                std::cout << "ID: "+std::to_string(ID)+"\n";
+                std::cout << "Path: "+path+"\n";
+                std::cout << "Coordinate X: "+std::to_string(x)+"\n";
+                std::cout << "Coordinate Y: "+std::to_string(y)+"\n";
+                std::cout << "Average loudness: "+std::to_string(l)+"\n";
+                std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
+            }
+            else
+            {
+                // In this case the received message is a continuation of another sound
+                // Just concantenate the loudness values to the last added vector
+                i=i+4;
+                juce::String loudnessValues_str = message[i].getString();
+                std::vector<float> update_last_vector = loader.loudnessValues.back();
+                update_last_vector.insert(update_last_vector.end(), this->string2floatVector(loudnessValues_str).begin(), this->string2floatVector(loudnessValues_str).end() );
+                loader.loudnessValues.back() = update_last_vector;
+                i++;
+                // Print info in console
+                std::cout << "\nContinuation of sound number "+std::to_string(loader.ids.size())+"\n";
+                std::cout << "ID: "+std::to_string(loader.ids.back())+"\n";
+                std::cout << "Path: "+loader.paths.back()+"\n";
+                std::cout << "Average loudness: "+std::to_string(loader.targetLoudness.back())+"\n";
+                std::cout << "Continuation of grains loudness values: "+loudnessValues_str+"\n";
+            }
         }
     }
 }
@@ -318,8 +338,6 @@ void HelloSamplerAudioProcessor::changeListenerCallback(juce::ChangeBroadcaster 
     // Callback that gets triggered when the mouse moves to a new sound (the closest_sound_index changes)
     // For "debugging":
     //std::cout << "\nSound index has changed ("<< closest_sound_index->getVariable() <<")\n\n";
-    // This may be glitchy and not necessary
-    //this->calculateGrain();
 }
 
 void HelloSamplerAudioProcessor::calculateGrain()

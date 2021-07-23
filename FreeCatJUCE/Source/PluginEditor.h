@@ -16,7 +16,7 @@
 /**
 */
 class HelloSamplerAudioProcessorEditor  : public juce::AudioProcessorEditor
-, public juce::Timer
+, public juce::Timer, public juce::ChangeListener
 {
 public:
     HelloSamplerAudioProcessorEditor (HelloSamplerAudioProcessor& p);
@@ -27,14 +27,19 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void showConnectionErrorMessage(const juce::String& messageText);
+    
+    void changeListenerCallback(juce::ChangeBroadcaster *source) override;
 
 private:
     // Title interface one (text)
     juce::Label titleLabel;
-    // Title interface two ()
+    // Title interface two (query by examples)
     juce::Label titleLabelTwo;
     // Sound map
     Map map;
+    // Grain size text box
+    juce::Label grainSizeLabel;
+    juce::TextEditor grainSizeText;
     //Text query text boxes
     juce::Label queryLabel;
     juce::TextEditor queryText;
@@ -47,6 +52,10 @@ private:
     juce::TextEditor queryByExampleID_3;
     juce::Label queryByExample_4;
     juce::TextEditor queryByExampleID_4;
+    
+    juce::SharedResourcePointer<SharedVariable_grainSize> grainSize;
+    juce::SharedResourcePointer<SharedVariable_loading> loading;
+    void startLoading();
     
     juce::OSCSender sender;
     int sendUDPport { 9002 };

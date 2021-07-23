@@ -86,7 +86,7 @@ def get_sounds_by_MFCCs(mfccs_array, avoid_sounds):
         mfccs_str = ','.join(map(str, mfccs.tolist()))
         pager = freesound_client.content_based_search(
             target = f'lowlevel.mfcc.mean:{mfccs_str}',
-            filter = configs.FREESOUND_METADATA_FILTER,
+            descriptors_filter = configs.FREESOUND_DESCRIPTORS_DURATION_FILTER,
             fields = ','.join(configs.FREESOUND_METADATA_FIELDS),
             descriptors = ','.join(configs.FREESOUND_METADATA_DESCRIPTORS),
             page_size = 2
