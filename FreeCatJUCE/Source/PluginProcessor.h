@@ -75,7 +75,7 @@ public:
 private:
     juce::SharedResourcePointer<SharedVariable_grainSize> grainSize;
     juce::SharedResourcePointer<SharedVariable_loaded> loaded;
-    juce::SharedResourcePointer<SharedVariable_loaded> loading;
+    juce::SharedResourcePointer<SharedVariable_loading> loading;
 
     juce::SharedResourcePointer<SharedVariable_mouseClicked> mouseClicked;
     juce::SharedResourcePointer<SharedVariable_x> x_points;

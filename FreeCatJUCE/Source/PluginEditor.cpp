@@ -26,6 +26,9 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     // Time to repaint map
     juce::Timer::startTimerHz(60);
     
+    // Listen to loading variable changes (a callback function is triggered)
+    loading->addChangeListener(this);
+    
     // Grain size
     addAndMakeVisible (grainSizeLabel);
     grainSizeLabel.setText ("Grain size:", juce::dontSendNotification);
@@ -35,6 +38,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     addAndMakeVisible (grainSizeText);
     grainSizeText.setColour (juce::Label::backgroundColourId, juce::Colours::darkblue);
     grainSizeText.setInputRestrictions(6, "0123456789");
+    grainSizeText.setText(std::to_string(grainSize->getVariable()));
     grainSizeText.onReturnKey = [this] {
         // Send OSC messages
         grainSize->setVariable(grainSizeText.getText().getIntValue());
@@ -173,6 +177,7 @@ void HelloSamplerAudioProcessorEditor::sendOSCexamples(juce::String one, juce::S
 void HelloSamplerAudioProcessorEditor::startLoading()
 {
     // Blocks text editors and show loading message
+    grainSizeText.setReadOnly(true);
     queryText.setReadOnly(true);
     queryByExampleID_1.setReadOnly(true);
     queryByExampleID_2.setReadOnly(true);
@@ -184,7 +189,8 @@ void HelloSamplerAudioProcessorEditor::startLoading()
 void HelloSamplerAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source)
 {
     // Callback that gets triggered when the loading boolean turns to false
-    std::cout << "Loading boolean has changed to false: " << loading->getVariable() << "\n";
+    //std::cout << "Loading boolean has changed to false: " << loading->getVariable() << "\n";
+    grainSizeText.setReadOnly(false);
     queryText.setReadOnly(false);
     queryByExampleID_1.setReadOnly(false);
     queryByExampleID_2.setReadOnly(false);

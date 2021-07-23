@@ -107,15 +107,15 @@ def create_arguments_list(df, query_by_examples):
         loudnessValues_formatted = str(loudnessValues).replace('[','').replace(']','').replace(',','')
         
         # Before adding arguments to the messages list, check its size in bytes, as it may have to be splitted
-        size_small_args = actualsize([id, path, x, y, ldns])
+        size_small_args = actualsize(["New sound",id, path, x, y, ldns])
         size_long_string = actualsize([loudnessValues_formatted])
-        print_mod(f"Sending sound {id} {{{idx+1}/{df.shape[0]}}}")
+        print_mod(f"Sending sound {id} [{idx+1}/{df.shape[0]}]")
         #print_mod(f"Size of the small part of the message: {size_small_args}. Size of the loudnessValues_formatted string: {size_long_string}")
         if size_long_string + size_small_args > MAX_BYTES_SIZE:
             # Divide long string of loudness values in parts, otherwise the message is too big for JUCE
             n_parts = size_long_string/(MAX_BYTES_SIZE-size_small_args-28)
             len_part = int(len(loudnessValues)/n_parts)
-            print_mod(f"Dividing information in several messages. Number of parts: {n_parts} (rounded to {math.ceil(n_parts)}). Length of each part: {len_part} (total length: {len(loudnessValues)}).")
+            print_mod(f"Dividing information in several messages. Number of parts: {math.ceil(n_parts)}. Length of each part: {len_part} (total length: {len(loudnessValues)}).")
             arguments.append("New sound")
             for i in range(math.ceil(n_parts)):
                 # Append same sound ID and rest of arguments
@@ -134,7 +134,7 @@ def create_arguments_list(df, query_by_examples):
                 arguments.append(l_formatted)
                 msgs.append(arguments)
                 #print_mod(f"Size of the divided string: {actualsize(l_formatted)} bytes (vs. {size_long_string} bytes of the complete string). String itself: {l_formatted}.")
-                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Initial arguments: {arguments[:4]}.")
+                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Initial arguments: {arguments[:2]}.")
                 arguments = []
 
         else:
@@ -147,7 +147,7 @@ def create_arguments_list(df, query_by_examples):
             arguments.append(loudnessValues_formatted)
             # One message per sound   
             msgs.append(arguments)
-            print_mod(f"Sound packed to be sent. Initial arguments: {arguments[:4]}")
+            print_mod(f"Sound packed to be sent. Initial arguments: {arguments[:2]}")
         
     return msgs
 
@@ -211,10 +211,8 @@ def handle_query_by_examples(*args):
     download_and_analyze(None, ref_ids_list, True)
 
 def handle_grain_size(*args):
-    print_mod("\nGrain size received: " + str(args))
-    # Trigger process
     configs.grain_size = args[1]
-    print_mod(f"Grain size changed to: {configs.grain_size}")
+    print_mod(f"\nGrain size changed to: {configs.grain_size}")
 
 # Listen to OSC messages
 dispatcher = dispatcher.Dispatcher()

@@ -28,7 +28,7 @@ window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::hann) // 
     if (! connect (receiveUDPport))
         this->showConnectionErrorMessage ("Error: could not connect to UDP port " + std::to_string(receiveUDPport));
     OSCReceiver::addListener (this, "/juce");
-    // Listen to closest_sound_index variable changes (a callback function is )
+    // Listen to closest_sound_index variable changes (a callback function is triggered)
     closest_sound_index->addChangeListener(this);
     // Initialize buffer where grains are stored
     grainBuffer.setSize(1, grainSize->getVariable());
@@ -276,8 +276,8 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
     }
     else
     {
-        std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
         receivedOSCmessages +=1;
+        // std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
         // Decode message based on the order of the arguments
         int i=1;
         while (i<message.size())
