@@ -79,7 +79,7 @@ def grid_interpolation(ref_sounds, nx, ny):
 def get_sounds_by_MFCCs(mfccs_array, avoid_sounds):
     """ Performs a content based search using MFCCs as targets – one result per search.
     :mfccs_array: arrays with MFCCs coefficients (13 coefficients per sound).
-    :avoid_sounds: sounds that we don't want to get returned by the method.
+    :avoid_sounds: sounds that we don't want to get returned by the content based search.
     """
     sounds = []
     for mfccs in mfccs_array:
@@ -99,4 +99,5 @@ def get_sounds_by_MFCCs(mfccs_array, avoid_sounds):
         else:
             sounds.append(results[0])
 
-    return avoid_sounds + sounds
+    # Return sounds in the correct order
+    return [avoid_sounds[0]] + sounds[0:3] + [avoid_sounds[1]] + sounds[3:18] + [avoid_sounds[2]] + sounds[18:] + [avoid_sounds[3]]
