@@ -42,7 +42,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     grainSizeText.onReturnKey = [this] {
         // Send OSC messages
         grainSize->setVariable(grainSizeText.getText().getIntValue());
-        std::cout << "Grain size to be sent via OSC: " << grainSize->getVariable() << "\n";
+        std::cout << "\nGrain size to be sent via OSC: " << grainSize->getVariable() << "\n";
         if (! sender.send("/juce/grain", grainSize->getVariable()))
             this->showConnectionErrorMessage("Error: could not send OSC message.");
     };
@@ -63,7 +63,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     addAndMakeVisible (queryText);
     queryText.setColour (juce::Label::backgroundColourId, juce::Colours::darkblue);
     queryText.onReturnKey = [this] {
-        std::cout << "Text query to be sent via OSC: " << queryText.getText() + "\n";
+        std::cout << "\nText query to be sent via OSC: " << queryText.getText() + "\n";
         this->sendOSCtext(queryText.getText());
         this->startLoading();
     };
@@ -112,7 +112,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     queryByExampleID_4.setInputRestrictions(6, "0123456789");
     queryByExampleID_4.onReturnKey = [this] {
         // Send OSC messages
-        std::cout << "List of sound IDs to be sent via OSC: " << queryByExampleID_1.getText()+", "+ queryByExampleID_2.getText()+", "+ queryByExampleID_3.getText()+", "+ queryByExampleID_4.getText() + "\n";
+        std::cout << "\nList of sound IDs to be sent via OSC: " << queryByExampleID_1.getText()+", "+ queryByExampleID_2.getText()+", "+ queryByExampleID_3.getText()+", "+ queryByExampleID_4.getText() + "\n";
         this->sendOSCexamples(queryByExampleID_1.getText(), queryByExampleID_2.getText(), queryByExampleID_3.getText(), queryByExampleID_4.getText());
         this->startLoading();
     };

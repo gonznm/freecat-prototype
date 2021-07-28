@@ -21,7 +21,7 @@ HelloSamplerAudioProcessor::HelloSamplerAudioProcessor()
                      #endif
                        ),
 #endif
-window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::hann) // hamming window used to window grain in the time domain
+window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::triangular) // triangular window used to window grain in the time domain
 {
     // Start listening to OSC messages
     // specify here on which UDP port number to receive incoming OSC messages
@@ -29,7 +29,8 @@ window (grainSize->getVariable(), juce::dsp::WindowingFunction<float>::hann) // 
         this->showConnectionErrorMessage ("Error: could not connect to UDP port " + std::to_string(receiveUDPport));
     OSCReceiver::addListener (this, "/juce");
     // Listen to closest_sound_index variable changes (a callback function is triggered)
-    closest_sound_index->addChangeListener(this);
+    //closest_sound_index->addChangeListener(this);
+    grainSize->addChangeListener(this);
     // Initialize buffer where grains are stored
     grainBuffer.setSize(1, grainSize->getVariable());
 }
@@ -171,7 +172,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             writePointer[sampleCount] = grainReader[grainSamplePos];
             
-            /* "Debugging"
+            // "Debugging"
             if (sampleCount==0)
             {
                 std::cout << "Starting buffer... (buffer position " << sampleCount << ", value " << writePointer[sampleCount] << ", grain position " << grainSamplePos << ")\n";
@@ -179,14 +180,13 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             if (grainSamplePos==0)
             {
                 std::cout << "\nGrain first sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
-                std::cout << "Output (first): " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
+                std::cout << "Output buffer: " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
             }
             if (grainSamplePos==grainBuffer.getNumSamples())
             {
                 std::cout << "Grain last sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
-                std::cout << "Output (last): " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
+                std::cout << "Output buffer: " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
             }
-            */
             
             if (grainSamplePos < grainBuffer.getNumSamples())
             {
@@ -246,7 +246,7 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 // My added functions
 
 // OSC receiver: ids, paths, x, y, targetLoudness, loudnessValues
-// Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "0 4410 8820", "48.0 54.2 44.1"]
+// Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "48.0 54.2 44.1"]
 void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& message)
 {
     // clear all vectors when the message has finished
@@ -280,8 +280,11 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
         // std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
         // Decode message based on the order of the arguments
         int i=1;
-        while (i<message.size())
+        std::cout << "\nIs message a string? " << message[0].isString();
+        //std::cout << "\nIs new sound?? " << message[0].getString().compare("New sound") <<"\n";
+        if ( message[0].isString() )
         {
+            std::cout << "\nMessage: " << message[0].getString() <<"\n";
             if ( message[0].getString().compare("New sound")==0 )
             {
                 int ID = message[i].getInt32();
@@ -302,7 +305,6 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
                 // grains loudness values come as a string of integers separated by spaces, this needs to be splitted
                 juce::String loudnessValues_str = message[i].getString();
                 loader.loudnessValues.push_back(this->string2floatVector(loudnessValues_str));
-                i++;
                 // Print info in console
                 std::cout << "\nSound number "+std::to_string(loader.ids.size())+"\n";
                 std::cout << "ID: "+std::to_string(ID)+"\n";
@@ -312,23 +314,31 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
                 std::cout << "Average loudness: "+std::to_string(l)+"\n";
                 std::cout << "Grains loudness values: "+loudnessValues_str+"\n";
             }
-            else
-            {
-                // In this case the received message is a continuation of another sound
-                // Just concantenate the loudness values to the last added vector
-                i=i+4;
-                juce::String loudnessValues_str = message[i].getString();
-                std::vector<float> update_last_vector = loader.loudnessValues.back();
-                update_last_vector.insert(update_last_vector.end(), this->string2floatVector(loudnessValues_str).begin(), this->string2floatVector(loudnessValues_str).end() );
-                loader.loudnessValues.back() = update_last_vector;
-                i++;
-                // Print info in console
-                std::cout << "\nContinuation of sound number "+std::to_string(loader.ids.size())+"\n";
-                std::cout << "ID: "+std::to_string(loader.ids.back())+"\n";
-                std::cout << "Path: "+loader.paths.back()+"\n";
-                std::cout << "Average loudness: "+std::to_string(loader.targetLoudness.back())+"\n";
-                std::cout << "Continuation of grains loudness values: "+loudnessValues_str+"\n";
-            }
+        }
+        else
+        {
+            std::cout << "\nMessage: " << message[0].getInt32() <<"\n";
+            // In this case the received message is a continuation of a sound
+            // Just concantenate the loudness values to the last added vector
+            juce::String loudnessValues_str_cont = message[5].getString();
+            std::vector<float> loudnessValues = this->string2floatVector(loudnessValues_str_cont);
+            loader.loudnessValues.back().insert(loader.loudnessValues.back().end(), loudnessValues.begin(), loudnessValues.end() );
+            std::cout << "\nContinuation vector as a float vector: ";
+            for (auto it = loudnessValues.begin(); it != loudnessValues.end(); ++it)
+                std::cout << *it << ' ';
+            std::cout << "\nUpdated vector: ";
+            for (auto it = loader.loudnessValues.back().begin(); it != loader.loudnessValues.back().end(); ++it)
+                std::cout << *it << ' ';
+            // Print info in console
+            std::cout << "\nContinuation of sound number "+std::to_string(loader.ids.size())+"\n";
+            std::cout << "ID: "+std::to_string(loader.ids.back())+"\n";
+            std::cout << "Path: "+loader.paths.back()+"\n";
+            std::cout << "Average loudness: "+std::to_string(loader.targetLoudness.back())+"\n";
+            std::cout << "Continuation of grains loudness values: "+loudnessValues_str_cont+"\n";
+            std::cout << "Complete loudness values size: "<< loader.loudnessValues.back().size() <<"\n";
+            std::cout << "Complete list of loudness values: ";
+            for (auto it = loader.loudnessValues.back().begin(); it != loader.loudnessValues.back().end(); ++it)
+                std::cout << *it << ' ';
         }
     }
 }
@@ -338,6 +348,9 @@ void HelloSamplerAudioProcessor::changeListenerCallback(juce::ChangeBroadcaster 
     // Callback that gets triggered when the mouse moves to a new sound (the closest_sound_index changes)
     // For "debugging":
     //std::cout << "\nSound index has changed ("<< closest_sound_index->getVariable() <<")\n\n";
+    //std::cout << "Grain size has changed: "<< grainSize->getVariable();
+    grainBuffer.setSize(1, grainSize->getVariable(), true); // boolean true corresponds to keepExistingContent
+    std::cout << "Grain buffer size has changed: "<< grainBuffer.getNumSamples() <<"\n\n";
 }
 
 void HelloSamplerAudioProcessor::calculateGrain()
@@ -380,12 +393,12 @@ int HelloSamplerAudioProcessor::getGrainStartSample(int snd_idx)
         if ( loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-6 && loader.loudnessValues[snd_idx][i] < loader.targetLoudness[snd_idx]+6 )
         {
             // Use these indexes to get the start samples of these grains
-            candidates.push_back(i * grainSize->grainSize);
+            candidates.push_back(i * grainSize->getVariable());
         }
         // if there are no values, just take one that is >(targetLoudness-12)
         else if (loader.loudnessValues[snd_idx][i] > loader.targetLoudness[snd_idx]-12)
         {
-            candidates.push_back(i * grainSize->grainSize);
+            candidates.push_back(i * grainSize->getVariable());
         }
     }
     // make a random choice between these ones
@@ -403,8 +416,10 @@ std::vector<float> HelloSamplerAudioProcessor::string2floatVector(juce::String s
     juce::StringArray str_split;
     str_split.addTokens(str, " ", "\"");
     std::vector<float> output;
+    //std::cout << "\nSTRING2FLOAT VECTOR VALUES:\n";
     for (int i=0; i<str_split.size(); i++)
     {
+        //std::cout << str_split[i] + ' ';
         output.push_back(str_split[i].getFloatValue());
     }
     return output;

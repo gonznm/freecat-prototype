@@ -134,12 +134,13 @@ def create_arguments_list(df, query_by_examples):
                 arguments.append(l_formatted)
                 msgs.append(arguments)
                 #print_mod(f"Size of the divided string: {actualsize(l_formatted)} bytes (vs. {size_long_string} bytes of the complete string). String itself: {l_formatted}.")
-                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Initial arguments: {arguments[:2]}.")
+                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Arguments: {arguments}.")
                 arguments = []
+                
 
         else:
             arguments.append("New sound")
-            arguments.append(row['sound_id'])
+            arguments.append(id)
             arguments.append(path)
             arguments.append(x)
             arguments.append(y)
@@ -147,7 +148,7 @@ def create_arguments_list(df, query_by_examples):
             arguments.append(loudnessValues_formatted)
             # One message per sound   
             msgs.append(arguments)
-            print_mod(f"Sound packed to be sent. Initial arguments: {arguments[:2]}")
+            print_mod(f"Sound packed to be sent. Arguments: {arguments}")
         
     return msgs
 
