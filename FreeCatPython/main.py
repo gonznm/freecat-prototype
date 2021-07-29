@@ -53,12 +53,19 @@ def interpolation_and_content_based_search(ref_ids_list):
 
 def text_query(query):
     # Make a text query and get 25 results
-    sounds = corpus_creation.query_freesound(query, num_results=25)
-    # Download the ogg previews
-    for count, sound in enumerate(sounds):
-        print_mod('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
-        corpus_creation.retrieve_sound_preview(sound, configs.FILES_DIR)
-    return sounds
+    if corpus_creation.query_freesound(query, num_results=25):
+        sounds = corpus_creation.query_freesound(query, num_results=25)
+        # Download the ogg previews
+        for count, sound in enumerate(sounds):
+            print_mod('Downloading sound with id {0} [{1}/{2}]'.format(sound.id, count + 1, len(sounds)))
+            corpus_creation.retrieve_sound_preview(sound, configs.FILES_DIR)
+        return sounds
+    else:
+        # Query didn't return enough results
+        print_mod("The text query returned too few results. Try another query.")
+        client = SimpleUDPClient(IP_s, PORT_s)
+        client.send_message('/juce', "Another Query")
+        return False
 
 def actualsize(input_obj):
     """ Function by Naser Tamimi to calculate actual size of python objects.
@@ -165,39 +172,40 @@ def download_and_analyze(query, ref_ids_list, query_by_examples):
     else:
         sounds = text_query(query)
 
-    # Feature extraction
-    print_mod("\nExtracting features...")
-    df = feature_extraction.get_audios_and_analysis(sounds, configs.grain_size)
-    if query_by_examples:
-        df['grid'] = grid
-    print_mod("\nFeatures extracted.")
+    if sounds:
+        # Feature extraction
+        print_mod("\nExtracting features...")
+        df = feature_extraction.get_audios_and_analysis(sounds, configs.grain_size)
+        if query_by_examples:
+            df['grid'] = grid
+        print_mod("\nFeatures extracted.")
 
-    # Send OSC message to JUCE
-    print_mod("\nSending OSC messages...")
-    client = SimpleUDPClient(IP_s, PORT_s)
-    client.send_message('/juce', "Start")
-    msgs = create_arguments_list(df, query_by_examples)
-    # Send the message in parts
-    total_num_arg = 0
-    msg_sizes = []
-    if type(msgs[0]) != int:
-        for arguments in msgs:
-            #print_mod("\nPart:\n",list)
-            client.send_message('/juce', arguments)
-            total_num_arg += len(arguments)
-            msg_sizes.append(actualsize(arguments))
+        # Send OSC message to JUCE
+        print_mod("\nSending OSC messages...")
+        client = SimpleUDPClient(IP_s, PORT_s)
+        client.send_message('/juce', "Start")
+        msgs = create_arguments_list(df, query_by_examples)
+        # Send the message in parts
+        total_num_arg = 0
+        msg_sizes = []
+        if type(msgs[0]) != int:
+            for arguments in msgs:
+                #print_mod("\nPart:\n",list)
+                client.send_message('/juce', arguments)
+                total_num_arg += len(arguments)
+                msg_sizes.append(actualsize(arguments))
 
-        print_mod(f"Total number of arguments: {total_num_arg}")
-        print_mod(f"Total number of messages sent: {len(msgs)}")
-        print_mod(f"Sizes of the messages (in chronological order): {msg_sizes} bytes.")
-    else:
-        #print_mod("n\Whole message:\n",arguments)
-        client.send_message('/juce', msgs)
-        print_mod("Size in bytes:", actualsize(msgs))
-        print_mod("Number of arguments:",len(msgs))
+            print_mod(f"Total number of arguments: {total_num_arg}")
+            print_mod(f"Total number of messages sent: {len(msgs)}")
+            print_mod(f"Sizes of the messages (in chronological order): {msg_sizes} bytes.")
+        else:
+            #print_mod("n\Whole message:\n",arguments)
+            client.send_message('/juce', msgs)
+            print_mod("Size in bytes:", actualsize(msgs))
+            print_mod("Number of arguments:",len(msgs))
 
-    client.send_message('/juce', "Finished")
-    print_mod("\nReady!")
+        client.send_message('/juce', "Finished")
+        print_mod("\nReady!")
 
 def handle_text_query(*args):
     print_mod("\nText query received: " + str(args))

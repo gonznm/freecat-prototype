@@ -173,7 +173,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             writePointer[sampleCount] = grainReader[grainSamplePos];
             
             // "Debugging"
-            if (sampleCount==0)
+            /*if (sampleCount==0)
             {
                 std::cout << "Starting buffer... (buffer position " << sampleCount << ", value " << writePointer[sampleCount] << ", grain position " << grainSamplePos << ")\n";
             }
@@ -186,7 +186,7 @@ void HelloSamplerAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             {
                 std::cout << "Grain last sample: " << grainReader[grainSamplePos] << " (position " << grainSamplePos << ")\n";
                 std::cout << "Output buffer: " << writePointer[sampleCount] << " (position " << sampleCount << ")\n";
-            }
+            }*/
             
             if (grainSamplePos < grainBuffer.getNumSamples())
             {
@@ -273,18 +273,25 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
             loader.load();
             loading->setVariable(false);
         }
+        if (message[0].getString().compare("Another Query")==0)
+        {
+            loading->setVariable(false);
+            anotherQuery->setVariable(true);
+            //"Your text query returned too few results. Try another query."
+        }
     }
     else
     {
         receivedOSCmessages +=1;
-        // std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
+        //std::cout << "\n* Number of arguments of the OSC message: "+std::to_string(message.size())+"\n";
+        //std::cout << "\nIs message a string? " << message[0].isString();
+        //std::cout << "\nIs new sound?? " << message[0].getString().compare("New sound") <<"\n";
+        
         // Decode message based on the order of the arguments
         int i=1;
-        std::cout << "\nIs message a string? " << message[0].isString();
-        //std::cout << "\nIs new sound?? " << message[0].getString().compare("New sound") <<"\n";
         if ( message[0].isString() )
         {
-            std::cout << "\nMessage: " << message[0].getString() <<"\n";
+            //std::cout << "\nMessage: " << message[0].getString() <<"\n";
             if ( message[0].getString().compare("New sound")==0 )
             {
                 int ID = message[i].getInt32();
@@ -317,7 +324,7 @@ void HelloSamplerAudioProcessor::oscMessageReceived (const juce::OSCMessage& mes
         }
         else
         {
-            std::cout << "\nMessage: " << message[0].getInt32() <<"\n";
+            //std::cout << "\nMessage: " << message[0].getInt32() <<"\n";
             // In this case the received message is a continuation of a sound
             // Just concantenate the loudness values to the last added vector
             juce::String loudnessValues_str_cont = message[5].getString();

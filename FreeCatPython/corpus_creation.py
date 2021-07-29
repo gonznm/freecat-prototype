@@ -21,7 +21,12 @@ def query_freesound(query, num_results=1):
         descriptors = ','.join(configs.FREESOUND_METADATA_DESCRIPTORS),
         page_size = num_results
     )
-    return [sound for sound in pager]
+
+    sounds = [sound for sound in pager]
+    if len(sounds)<10:
+        return False
+    else:
+        return sounds
 
 def retrieve_sound_preview(sound, directory):
     """Download the high-quality (compared to the MP3 preview) OGG 

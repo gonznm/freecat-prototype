@@ -129,4 +129,26 @@ public:
     }
 };
 
+class SharedVariable_anotherQuery : public juce::ChangeBroadcaster
+{
+public:
+    bool anotherQuery { false };
+    juce::uint32 start;
+    
+    void setVariable(bool newValue)
+    {
+        anotherQuery = newValue;
+        if (newValue)
+            start = juce::Time::getMillisecondCounter();
+    }
+    int getVariable()
+    {
+        return anotherQuery;
+    }
+    juce::uint32 getStartTime()
+    {
+        return start;
+    }
+    
+};
 

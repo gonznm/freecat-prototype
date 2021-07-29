@@ -55,7 +55,10 @@ private:
     
     juce::SharedResourcePointer<SharedVariable_grainSize> grainSize;
     juce::SharedResourcePointer<SharedVariable_loading> loading;
+    int loadingCounter {0};
     void startLoading();
+    
+    juce::SharedResourcePointer<SharedVariable_anotherQuery> anotherQuery;
     
     juce::OSCSender sender;
     int sendUDPport { 9002 };

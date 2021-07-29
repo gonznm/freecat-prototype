@@ -129,11 +129,43 @@ void HelloSamplerAudioProcessorEditor::paint (juce::Graphics& g)
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (juce::Colours::white);
 
+    // Show loading message
     if (loading->getVariable())
     {
         g.setColour (juce::Colours::black);
         g.setFont (40.0f);
-        g.drawSingleLineText ("Loading, please wait...", 80, getHeight()-60);
+        // Animate loading text to avoid the impression of a frozen screen
+        if (juce::Time::getMillisecondCounter() % 100 == 0)
+        {
+            loadingCounter++;
+        }
+            
+        if (loadingCounter==0)
+            g.drawSingleLineText ("Loading, please wait...", 80, getHeight()-100);
+        else if (loadingCounter==1)
+            g.drawSingleLineText ("Loading, please wait.", 80, getHeight()-100);
+        else if (loadingCounter==2)
+            g.drawSingleLineText ("Loading, please wait..", 80, getHeight()-100);
+        
+        // reset loading counter
+        if (loadingCounter>1)
+            loadingCounter = 0;
+    }
+    
+    // Ask for another query when it is too specific
+    if (anotherQuery->getVariable() && !loading->getVariable())
+    {
+        juce::uint32 now = juce::Time::getMillisecondCounter();
+        if ((now-anotherQuery->getStartTime()) < 7000) // show message for seven seconds
+        {
+            g.setColour (juce::Colours::black);
+            g.setFont (20.0f);
+            g.drawMultiLineText ("Your text query returned too few results. Try another query.", 70, getHeight()-100, getWidth()/2-150);
+        }
+        else
+        {
+            anotherQuery->setVariable(false);
+        }
     }
 }
 
