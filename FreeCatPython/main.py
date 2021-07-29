@@ -85,7 +85,7 @@ def actualsize(input_obj):
         objects = gc.get_referents(*new)
     return memory_size
 
-def create_arguments_list(df, query_by_examples):
+def create_arguments_list(df):
     # Create list of arguments to be sent: ids, paths, x, y, targetLoudness, loudnessValues
     # Example –> [1234, "/path/audio", 1.5, 1.2, 45.5, "48.0874 54.2234 44.1123"]
     msgs = []  # list of arguments
@@ -99,12 +99,8 @@ def create_arguments_list(df, query_by_examples):
         path = '/Volumes/Almacen/DirectCode/freecat-prototype/FreeCatPython'+path_docker[4:]
 
         # Sound coordinates
-        if query_by_examples:
-            x = row['grid'][0]
-            y = row['grid'][1]
-        else:
-            x = row['pca_norm_range'][0]
-            y = row['pca_norm_range'][1]
+        x = row['grid'][0]
+        y = row['grid'][1]
 
         # Target loudness
         ldns = row['average_loudness']
@@ -171,6 +167,7 @@ def download_and_analyze(query, ref_ids_list, query_by_examples):
         sounds, grid = interpolation_and_content_based_search(ref_ids_list)
     else:
         sounds = text_query(query)
+        grid = corpus_creation.gen_RMS_grid(nx, ny)
 
     if sounds:
         # Feature extraction
@@ -178,13 +175,17 @@ def download_and_analyze(query, ref_ids_list, query_by_examples):
         df = feature_extraction.get_audios_and_analysis(sounds, configs.grain_size)
         if query_by_examples:
             df['grid'] = grid
+        else:
+            # Approximate PCA coordinates to a grid
+            df = df.sort_values(by=['pca_single_val'])
+            df['grid'] = grid
         print_mod("\nFeatures extracted.")
 
         # Send OSC message to JUCE
         print_mod("\nSending OSC messages...")
         client = SimpleUDPClient(IP_s, PORT_s)
         client.send_message('/juce', "Start")
-        msgs = create_arguments_list(df, query_by_examples)
+        msgs = create_arguments_list(df)
         # Send the message in parts
         total_num_arg = 0
         msg_sizes = []

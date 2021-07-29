@@ -135,7 +135,7 @@ void HelloSamplerAudioProcessorEditor::paint (juce::Graphics& g)
         g.setColour (juce::Colours::black);
         g.setFont (40.0f);
         // Animate loading text to avoid the impression of a frozen screen
-        if (juce::Time::getMillisecondCounter() % 100 == 0)
+        if (juce::Time::getApproximateMillisecondCounter() % 100 == 0)
         {
             loadingCounter++;
         }

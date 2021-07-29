@@ -1,5 +1,6 @@
 ## Functions used in the corpus creation
 import numpy as np
+import pandas as pd
 import os
 import freesound
 from scipy.interpolate import griddata
@@ -23,13 +24,13 @@ def query_freesound(query, num_results=1):
     )
 
     sounds = [sound for sound in pager]
-    if len(sounds)<10:
+    if len(sounds)<24: # minimum 25 results to consider the query
         return False
     else:
         return sounds
 
 def retrieve_sound_preview(sound, directory):
-    """Download the high-quality (compared to the MP3 preview) OGG 
+    """ Download the high-quality (compared to the MP3 preview) OGG 
     sound preview of a given Freesound sound object to the given directory.
     """
     return freesound.FSRequest.retrieve(
@@ -80,6 +81,25 @@ def grid_interpolation(ref_sounds, nx, ny):
     # Make the interpolation
     interp_values = griddata(known_points, known_values, np.asarray(interp_points), method='linear', fill_value=0)
     return interp_values, grid
+
+def gen_RMS_grid(nx, ny):
+    # Build grid of (nx,ny) points
+    x = np.linspace(0, 1, nx)
+    y = np.linspace(0, 1, ny)
+    xv, yv = np.meshgrid(x, y)
+    xv = xv.flatten()
+    yv = yv.flatten()
+    grid = []
+    grid_single_values = []
+    for i in range(len(xv)):
+        grid.append([xv[i], yv[i]])
+        grid_single_values.append( np.sqrt((xv[i]+yv[i])**2) )
+
+    d = {'grid': grid, 'single_val': grid_single_values}
+    grid_df = pd.DataFrame(data=d)
+
+    # Return the grid sorted by the RMS value of each pair of coordinates
+    return grid_df.sort_values(by=['single_val'])['grid'].values
 
 def get_sounds_by_MFCCs(mfccs_array, avoid_sounds):
     """ Performs a content based search using MFCCs as targets – one result per search.

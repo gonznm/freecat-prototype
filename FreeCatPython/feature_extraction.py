@@ -37,7 +37,7 @@ def analyze_segments(audio, grain_size):
 def get_audios_and_analysis(sounds, grain_size):
     """ Load all available analysis and audios into a dataframe.
     """
-    df = pd.DataFrame(columns=['sound_id', 'path','average_loudness','grains_start_samples', 'grains_loudness','mfccs_mean', 'loudness_FS','mfcss_normalized','pca', 'pca_norm_range'])
+    df = pd.DataFrame(columns=['sound_id', 'path','average_loudness','grains_start_samples', 'grains_loudness','mfccs_mean', 'loudness_FS','mfcss_normalized','pca', 'pca_norm_range', 'pca_single_val'])
     feats = []
     i = 0
     for sound in sounds:
@@ -54,7 +54,7 @@ def get_audios_and_analysis(sounds, grain_size):
             mfcc_mean = sound.analysis.lowlevel.mfcc.mean
             loudness_FS = sound.analysis.lowlevel.average_loudness
             # Store them in a dataframe
-            df.loc[i] = [sound.id, file_path, average_loudness, grains_start_samples,  grains_loudness, mfcc_mean, 10*np.log10(loudness_FS), 0, 0, 0]
+            df.loc[i] = [sound.id, file_path, average_loudness, grains_start_samples,  grains_loudness, mfcc_mean, 10*np.log10(loudness_FS), 0, 0, 0, 0]
             feats.append(mfcc_mean)
             i += 1
         else:
@@ -78,6 +78,11 @@ def get_audios_and_analysis(sounds, grain_size):
     for i, tuple in enumerate(pca):
         # Normalize by max value and put in the range of 0-1
         df['pca_norm_range'].loc[i] = (np.asarray(tuple)/max_value + 1)/2
+
+    # Add a column with single value to be able to sort
+    for idx, row in df.iterrows():
+        df.at[idx, 'pca_single_val']= np.sqrt((row['pca_norm_range'][0]+row['pca_norm_range'][1])**2) 
     
     print(f'\nTotal number of sounds used at the end: {len(df.index)}')
+
     return df
