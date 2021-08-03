@@ -20,10 +20,15 @@ def query_freesound(query, num_results=1):
         filter = configs.FREESOUND_METADATA_FILTER,
         fields = ','.join(configs.FREESOUND_METADATA_FIELDS),
         descriptors = ','.join(configs.FREESOUND_METADATA_DESCRIPTORS),
-        page_size = num_results
+        page_size = num_results + 10 # add some extra results to substitute sounds that don't have an analysis
     )
 
-    sounds = [sound for sound in pager]
+    sounds = []
+    for sound in pager:
+        if sound.analysis and num_results>0:
+            sounds.append(sound)
+            num_results = num_results -1
+    
     if len(sounds)<24: # minimum 25 results to consider the query
         return False
     else:
@@ -55,6 +60,12 @@ def get_sounds_by_ID(ids_list):
 
 def grid_interpolation(ref_sounds, nx, ny):
     # MFCC coefficients of the reference sounds
+    known_values = np.asarray([])
+    # for sound in ref_sounds:
+    #     if not sound.analysis or not sound.analysis.lowlevel or not sound.analysis.lowlevel.mfcc.mean:
+    #         print("Analysis doesn't exist for sound ", sound.id)
+    #     else:
+    #         known_values = np.append(known_values, sound.analysis.lowlevel.mfcc.mean)
     known_values = np.asarray([sound.analysis.lowlevel.mfcc.mean for sound in ref_sounds])
     # Fixed positions of the reference sounds on the corners of the quadrilateral
     known_points = np.array([(1, 0),(1, 1),(0, 0),(0, 1)]) 

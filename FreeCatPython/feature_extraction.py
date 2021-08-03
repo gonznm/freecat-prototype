@@ -82,7 +82,6 @@ def get_audios_and_analysis(sounds, grain_size):
     # Add a column with single value to be able to sort
     for idx, row in df.iterrows():
         df.at[idx, 'pca_single_val']= np.sqrt((row['pca_norm_range'][0]+row['pca_norm_range'][1])**2) 
-    
-    print(f'\nTotal number of sounds used at the end: {len(df.index)}')
+    #print(f'\nTotal number of sounds used at the end: {len(df.index)}')
 
     return df
