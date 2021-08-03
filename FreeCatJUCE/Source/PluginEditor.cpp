@@ -14,7 +14,7 @@ HelloSamplerAudioProcessorEditor::HelloSamplerAudioProcessorEditor (HelloSampler
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     // Set the editor's size
-    setSize (1000, 700);
+    setSize (1250, 700);
     
     // Start OSC sender
     if (! sender.connect ("127.0.0.1", sendUDPport))   // [4]
