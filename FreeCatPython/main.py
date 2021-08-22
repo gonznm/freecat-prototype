@@ -112,13 +112,13 @@ def create_arguments_list(df):
         # Before adding arguments to the messages list, check its size in bytes, as it may have to be splitted
         size_small_args = actualsize(["New sound",id, path, x, y, ldns])
         size_long_string = actualsize([loudnessValues_formatted])
-        print_mod(f"Sending sound {id} [{idx+1}/{df.shape[0]}]")
+        #print_mod(f"Sending sound {id} [{idx+1}/{df.shape[0]}]")
         #print_mod(f"Size of the small part of the message: {size_small_args}. Size of the loudnessValues_formatted string: {size_long_string}")
         if size_long_string + size_small_args > MAX_BYTES_SIZE:
             # Divide long string of loudness values in parts, otherwise the message is too big for JUCE
             n_parts = size_long_string/(MAX_BYTES_SIZE-size_small_args-28)
             len_part = int(len(loudnessValues)/n_parts)
-            print_mod(f"Dividing information in several messages. Number of parts: {math.ceil(n_parts)}. Length of each part: {len_part} (total length: {len(loudnessValues)}).")
+            #print_mod(f"Dividing information in several messages. Number of parts: {math.ceil(n_parts)}. Length of each part: {len_part} (total length: {len(loudnessValues)}).")
             arguments.append("New sound")
             for i in range(math.ceil(n_parts)):
                 # Append same sound ID and rest of arguments
@@ -137,7 +137,7 @@ def create_arguments_list(df):
                 arguments.append(l_formatted)
                 msgs.append(arguments)
                 #print_mod(f"Size of the divided string: {actualsize(l_formatted)} bytes (vs. {size_long_string} bytes of the complete string). String itself: {l_formatted}.")
-                print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Arguments: {arguments}.")
+                #print_mod(f"Size of the divided message: {actualsize(arguments)} bytes. Arguments: {arguments}.")
                 arguments = []
                 
 
@@ -151,7 +151,7 @@ def create_arguments_list(df):
             arguments.append(loudnessValues_formatted)
             # One message per sound   
             msgs.append(arguments)
-            print_mod(f"Sound packed to be sent. Arguments: {arguments}")
+            #print_mod(f"Sound packed to be sent. Arguments: {arguments}")
         
     return msgs
 
@@ -196,8 +196,7 @@ def download_and_analyze(query, ref_ids_list, query_by_examples):
                 total_num_arg += len(arguments)
                 msg_sizes.append(actualsize(arguments))
 
-            print_mod(f"Total number of arguments: {total_num_arg}")
-            print_mod(f"Total number of messages sent: {len(msgs)}")
+            print_mod(f"\nTotal number of messages sent: {len(msgs)}")
             print_mod(f"Sizes of the messages (in chronological order): {msg_sizes} bytes.")
         else:
             #print_mod("n\Whole message:\n",arguments)
